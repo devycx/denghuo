@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.dev.vars
+*.tsbuildinfo
+.DS_Store
+.wrangler/
+.tmp/
+miniflare-email-store/

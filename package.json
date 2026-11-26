@@ -1,0 +1,35 @@
+{
+  "name": "denghuo-video",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "灯火视频 — 基于 Cloudflare 免费能力的原创聚合播放站",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run typecheck && node scripts/build.mjs",
+    "preview": "npm run build && vite preview",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.worker.json",
+    "test": "node scripts/test.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "artplayer": "^5.2.3",
+    "hls.js": "^1.5.17",
+    "hono": "^4.13.22",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.70.2",
+    "@cloudflare/workers-types": "^5.20261123.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^3.0.0",
+    "wrangler": "^4.162.0"
+  }
+}

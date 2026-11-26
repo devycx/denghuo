@@ -1,0 +1,13 @@
+{
+  "name": "灯火视频",
+  "short_name": "灯火",
+  "description": "轻量、开放、自主可控的在线视频聚合播放站",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
