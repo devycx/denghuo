@@ -75,6 +75,10 @@ denghuo/
 
 ---
 
+仓库：https://github.com/devycx/denghuo （public，MIT）。push `main` → `ci`（typecheck / 11 单测 / build）→ `deploy`（wrangler deploy）自动发布。
+
+---
+
 ## 架构选型说明
 
 为什么不复用夜幕影视的 Next.js + OpenNext：
@@ -140,9 +144,10 @@ npm run preview    # 在 Workers runtime 里预览构建产物
    npx wrangler tail   # 看实时日志
    ```
 
-GitHub Actions：把 `CLOUDFLARE_API_TOKEN` 与 `CLOUDFLARE_ACCOUNT_ID` 写入仓库 Secrets，push `main` 后 `ci` → `deploy` 自动发布。
+GitHub Actions 已配置：`CLOUDFLARE_API_TOKEN`（`github-actions-denghuo-deploy`，权限 Workers 脚本/KV 编辑）与 `CLOUDFLARE_ACCOUNT_ID` 已写入仓库 Secrets；push `main` 后 `ci` → `deploy` 自动发布，实测全绿。
 
 > 常规发布走 CI；本地 `wrangler deploy` 只用于预览/热修复/回滚。
+> 用 `gh secret set --body` 写 secrets，PowerShell 管道会带尾部换行导致 account id 校验失败。
 
 ---
 
