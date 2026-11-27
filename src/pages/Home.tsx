@@ -50,12 +50,15 @@ function SkeletonRow({ title }: { title: string }) {
 export function Home() {
   const [rows, setRows] = useState<Rows>(readCache);
   const [error, setError] = useState('');
-  // turn 只增不减（向后滑也可以为负），轮播到第三张后继续转到第一张，不做倒带。
-  const [turn, setTurn] = useState(0);
+  // 轨道 = [末张克隆, 三张真实, 首张克隆]；pos 落在 1..3 是真实帧，0 / 4 是过渡帧。
+  const [pos, setPos] = useState(1);
+  const [animating, setAnimating] = useState(true);
   const [dragX, setDragX] = useState(0);
-  const [radius, setRadius] = useState(0);
+  const [width, setWidth] = useState(() => (typeof window === 'undefined' ? 0 : window.innerWidth));
   const heroRef = useRef<HTMLElement>(null);
   const dragRef = useRef<{ startX: number; dx: number } | null>(null);
+  // 用定时器归位，不依赖 transitionend：系统开启「减弱动效」时过渡接近 0ms，事件会立刻到达。
+  const snapTimerRef = useRef<number | null>(null);
   const [playMap, setPlayMap] = useState<Record<string, PlayRef>>({});
 
   useEffect(() => {
@@ -95,19 +98,21 @@ export function Home() {
   ].filter(Boolean) as { key: string; label: string; item: DoubanHotItem }[];
 
   const count = slides.length;
-  const step = count ? 360 / count : 120;
-  const index = count ? ((turn % count) + count) % count : 0;
+  // 首尾克隆帧让「第三张 → 第一张」继续向同一方向滑，不会倒着退回去。
+  const frames = count ? [slides[count - 1], ...slides, slides[0]] : [];
+  const realIndex = count ? ((pos - 1) % count + count) % count : 0;
+  const slide = slides[realIndex];
 
-  // 圆柱半径由面宽推导：正 n 边形的内切圆半径 = (宽 / 2) / tan(π / n)。
+  useEffect(() => () => cancelSnap(), []);
   useEffect(() => {
     const el = heroRef.current;
-    if (!el || count < 2) return;
-    const update = () => setRadius((el.clientWidth / 2) / Math.tan(Math.PI / count));
+    if (!el) return;
+    const update = () => setWidth(el.clientWidth);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [count]);
+  }, []);
 
   // 头图一出现就把三张主推的播放源提前备好，点按钮直接进播放页。
   const slideKeys = slides.map((s) => `${s.key}:${s.item.title}`).join('|');
@@ -130,12 +135,35 @@ export function Home() {
   useEffect(() => {
     if (count < 2) return;
     const timer = setInterval(() => {
-      if (!dragRef.current) setTurn((t) => t + 1);
+      if (dragRef.current) return;
+      setPos((p) => {
+        const next = p + 1;
+        cancelSnap();
+        if (next === count + 1 || next === 0) scheduleSnap(next);
+        return next;
+      });
     }, 7000);
     return () => clearInterval(timer);
   }, [count]);
 
-  const slide = slides[index];
+  const cancelSnap = () => {
+    if (snapTimerRef.current !== null) {
+      clearTimeout(snapTimerRef.current);
+      snapTimerRef.current = null;
+    }
+  };
+  // 滑到克隆帧后瞬间跳回对应的真实帧：位置变了但画面一样，所以看不出跳变。
+  const snapTo = (to: number) => {
+    cancelSnap();
+    setAnimating(false);
+    setPos(to);
+    requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
+  };
+  const scheduleSnap = (target: number) => {
+    cancelSnap();
+    snapTimerRef.current = window.setTimeout(() => snapTo(target === 0 ? count : 1), 950);
+  };
+
   const play = async () => {
     if (!slide) return;
     const ready = playMap[slide.key];
@@ -153,16 +181,21 @@ export function Home() {
 
   const goTo = (i: number) => {
     if (count < 2) return;
-    // 点圆点时走最短路径，但仍基于 turn 累加，不会破坏连续旋转。
-    let delta = i - index;
+    const base = pos === 0 ? count : pos === count + 1 ? 1 : pos;
+    let delta = i - (((base - 1) % count + count) % count);
     if (delta > count / 2) delta -= count;
     if (delta < -count / 2) delta += count;
-    setTurn((t) => t + delta);
+    const next = base + delta;
+    cancelSnap();
+    if (next === 0 || next === count + 1) scheduleSnap(next);
+    setAnimating(true);
+    setPos(next);
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
     if (count < 2 || (e.target as HTMLElement).closest('button, a')) return;
     dragRef.current = { startX: e.clientX, dx: 0 };
+    setAnimating(false);
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent<HTMLElement>) => {
@@ -175,11 +208,17 @@ export function Home() {
     const dx = dragRef.current?.dx || 0;
     dragRef.current = null;
     setDragX(0);
-    if (dx < -40) setTurn((t) => t + 1);
-    else if (dx > 40) setTurn((t) => t - 1);
+    setAnimating(true);
+    if (dx < -40 || dx > 40) {
+      const dir = dx < -40 ? 1 : -1;
+      setPos((p) => {
+        const next = p + dir;
+        cancelSnap();
+        if (next === 0 || next === count + 1) scheduleSnap(next);
+        return next;
+      });
+    }
   };
-
-  const rotation = -turn * step + dragX * 0.35;
 
   return (
     <div className="page home">
@@ -193,18 +232,17 @@ export function Home() {
       >
         <div
           className={`hero-images ${dragRef.current ? 'dragging' : ''}`}
-          style={{ transform: `translateZ(${-radius}px) rotateY(${rotation}deg)` }}
+          style={{
+            transform: `translateX(${-pos * width + dragX}px)`,
+            transition: animating ? undefined : 'none',
+          }}
         >
-          {slides.map((s, i) => (
-            <div
-              className="hero-frame"
-              key={s.key}
-              style={{ transform: `rotateY(${i * step}deg) translateZ(${radius}px)` }}
-            >
+          {frames.map((s, i) => (
+            <div className="hero-frame" key={`${s.key}-${i}`}>
               <img className="hero-backdrop" src={img(coverLarge(s.item.cover))} alt="" aria-hidden="true" />
             </div>
           ))}
-          {!slides.length && <div className="hero-frame" />}
+          {!count && <div className="hero-frame" />}
         </div>
         <div className="hero-content">
           {slide ? (
@@ -220,12 +258,12 @@ export function Home() {
             <div className="hero-skeleton"><span /><span /><span /></div>
           )}
         </div>
-        {slides.length > 1 && (
+        {count > 1 && (
           <div className="hero-dots" aria-label="头图轮播">
             {slides.map((s, i) => (
               <button
                 key={s.key}
-                className={i === index ? 'on' : ''}
+                className={i === realIndex ? 'on' : ''}
                 aria-label={`第 ${i + 1} 张：${s.item.title}`}
                 onClick={() => goTo(i)}
               />

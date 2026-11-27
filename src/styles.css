@@ -130,16 +130,22 @@ code {
   margin: 0 auto;
   min-height: 56px;
   padding: var(--sp-2) var(--sp-5);
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--sp-5);
+  gap: var(--sp-4);
 }
-.brand { display: flex; align-items: center; flex-shrink: 0; }
+.brand { justify-self: start; display: flex; align-items: center; flex-shrink: 0; white-space: nowrap; }
 .brand-name { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+
+/* 搜索常驻中间：平时只有一枚图标，点开后输入框在同一行向左右展开，不弹下拉。 */
+.search-center {
+  justify-self: center;
+  display: flex; align-items: center; min-width: 0;
+}
 .searchbar {
-  flex: 0 0 auto;
   width: 0; max-width: 0;
-  display: flex;
+  display: flex; align-items: center;
   background: var(--panel);
   border: 1px solid transparent;
   border-radius: var(--r-pill);
@@ -147,25 +153,14 @@ code {
   opacity: 0; pointer-events: none;
   transition: width 320ms cubic-bezier(.22, 1, .36, 1), max-width 320ms cubic-bezier(.22, 1, .36, 1), opacity 180ms linear;
 }
-.searchbar.open { width: min(480px, 42vw); max-width: 480px; opacity: 1; pointer-events: auto; }
+.searchbar.open { width: min(360px, 30vw); max-width: 360px; opacity: 1; pointer-events: auto; }
 .searchbar:focus-within { background: var(--panel-2); }
-.searchbar input { flex: 1; min-width: 0; border: 0; outline: 0; padding: 9px 18px; background: transparent; }
+.searchbar input { width: 100%; min-width: 0; border: 0; outline: 0; padding: 9px 18px; background: transparent; }
 .searchbar input::placeholder { color: var(--faint); }
-.searchbar button {
-  border: 0;
-  padding: 0 18px;
-  background: transparent;
-  color: var(--accent);
-  font-weight: 400;
-  font-size: 17px;
-  transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
-}
-.searchbar button:hover { opacity: 0.75; }
-.searchbar button:active { transform: scale(0.92); }
-.searchbar button svg { width: 19px; height: 19px; display: block; }
+
 /* 导航区是纯图标，不是按钮：无底色、无描边、无按压缩放、无阴影。 */
 .header-actions {
-  margin-left: auto;
+  justify-self: end;
   display: flex; align-items: center; gap: var(--sp-3);
   flex-shrink: 0;
 }
@@ -182,22 +177,7 @@ code {
 .icon-btn:hover { color: var(--accent); background: transparent; }
 .icon-btn:active { transform: none; }
 .icon-btn svg { width: 22px; height: 22px; display: block; }
-.menu-wrap { position: relative; flex-shrink: 0; }
-.menu-pop {
-  position: absolute; right: 0; top: 48px; z-index: 60;
-  min-width: 168px; padding: var(--sp-2);
-  display: grid; gap: var(--sp-1);
-  background: var(--panel);
-  border: 1px solid var(--line-soft);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-}
-.menu-pop button {
-  border: 0; background: transparent; color: var(--text);
-  text-align: left; min-height: 40px; padding: 0 var(--sp-3);
-  border-radius: 10px; font-size: var(--fs-md);
-}
-.menu-pop button:hover { background: var(--panel-2); }
+.search-toggle { margin-left: var(--sp-2); }
 
 /* ---------- Common ---------- */
 .btn {
@@ -276,22 +256,20 @@ code {
   background: var(--bg);
   isolation: isolate;
 }
-/* 三张头图像贴在同一只旋转圆柱上的三张贴纸：
-   turn 连续累加，第三张之后接着转到第一张，不回退；手指左右滑动可直接拨动。 */
-.hero { perspective: 1400px; perspective-origin: 50% 50%; touch-action: pan-y; }
+/* 头图是水平无限滑动的轨道：首尾各接一帧克隆，第三张之后继续同方向滑到第一张。 */
+.hero { touch-action: pan-y; }
 .hero-images {
   position: absolute; inset: 0; z-index: 0;
-  transform-style: preserve-3d;
+  display: flex;
   transition: transform 900ms cubic-bezier(0.45, 0, 0.25, 1);
   will-change: transform;
 }
 .hero-images.dragging { transition: none; }
 .hero-frame {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
+  position: relative;
+  flex: 0 0 100%;
+  height: 100%;
   overflow: hidden;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 .hero-backdrop {
   position: absolute; inset: 0;
@@ -609,24 +587,13 @@ code {
 }
 @media (max-width: 640px) {
   .page { padding: var(--sp-4) var(--sp-4) var(--sp-8); }
-  .topbar-inner { padding: var(--sp-2) var(--sp-4); flex-wrap: nowrap; gap: var(--sp-2); min-height: 0; }
+  .topbar-inner { padding: var(--sp-2) var(--sp-4); gap: var(--sp-2); min-height: 0; }
   .brand-name { font-size: 16px; }
   .header-actions { gap: var(--sp-1); }
-  /* 移动端搜索栏始终占位，用 transform + opacity 展开/收起，避免 position 突变造成的顿挫。 */
-  .searchbar {
-    position: absolute; left: 12px; right: 12px; top: 54px;
-    width: auto; max-width: none; z-index: 55;
-    opacity: 0; pointer-events: none;
-    transform: translateY(-10px) scale(0.985);
-    transform-origin: top center;
-    transition: opacity 200ms var(--ease), transform 280ms var(--ease);
-  }
-  .searchbar.open {
-    width: auto; max-width: none; opacity: 1; pointer-events: auto;
-    transform: none;
-  }
+  /* 搜索仍在顶栏中间原地横向展开，宽度给左右两块留出空间。 */
+  .searchbar.open { width: min(220px, calc(100vw - 230px)); max-width: none; }
+  .searchbar input { padding: 9px 12px; }
   .card-row { grid-auto-columns: 132px; gap: var(--sp-3); }
-  .searchbar button { padding: 0 12px; }
   .hero { height: 68vh; min-height: 440px; }
   .hero h1 { margin-bottom: var(--sp-4); }
   .hero-content { padding-bottom: var(--sp-8); }

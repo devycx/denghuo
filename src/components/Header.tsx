@@ -26,34 +26,33 @@ export function Header() {
   const query = route.params.get('q') || '';
   const [text, setText] = useState(query);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setText(query), [query]);
   useEffect(() => {
-    setMenuOpen(false);
     setSearchOpen(false);
   }, [route.path]);
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus();
     else inputRef.current?.blur();
   }, [searchOpen]);
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [menuOpen]);
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
+  const submit = (event?: React.FormEvent) => {
+    event?.preventDefault();
     const value = text.trim();
     setSearchOpen(false);
     if (!value) return;
     navigate(`/search?q=${encodeURIComponent(value)}`);
+  };
+
+  // 同一枚图标：收起态点开，展开态有内容就搜索、没内容就收起。
+  const onSearchClick = () => {
+    if (!searchOpen) {
+      setSearchOpen(true);
+      return;
+    }
+    if (text.trim()) submit();
+    else setSearchOpen(false);
   };
 
   return (
@@ -63,61 +62,40 @@ export function Header() {
           <span className="brand-name">{config?.siteName || '灯火影视'}</span>
         </a>
 
-        <form className={`searchbar ${searchOpen ? 'open' : ''}`} onSubmit={submit} role="search">
-          <input
-            ref={inputRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') setSearchOpen(false);
-            }}
-            placeholder="搜片名、演员……"
-            aria-label="搜索"
-          />
-          <button type="submit" aria-label="搜索"><SearchIcon /></button>
-        </form>
-
-        <div className="header-actions">
+        <div className="search-center">
+          <form className={`searchbar ${searchOpen ? 'open' : ''}`} onSubmit={submit} role="search">
+            <input
+              ref={inputRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setSearchOpen(false);
+              }}
+              placeholder="搜片名、演员……"
+              aria-label="搜索"
+            />
+          </form>
           <button
-            className="icon-btn search-open"
+            className="icon-btn search-toggle"
             type="button"
-            aria-label={searchOpen ? '收起搜索' : '展开搜索'}
+            aria-label={searchOpen ? (text.trim() ? '搜索' : '收起搜索') : '展开搜索'}
             aria-expanded={searchOpen}
-            onClick={() => {
-              if (searchOpen) {
-                // 再点一次收起：不要把输入内容当作是否关闭的条件。
-                setSearchOpen(false);
-              } else {
-                setMenuOpen(false);
-                setSearchOpen(true);
-              }
-            }}
+            onClick={onSearchClick}
           >
             <SearchIcon />
           </button>
+        </div>
 
-          <div className="menu-wrap" ref={menuRef}>
-            <button
-              className="icon-btn menu-btn"
-              type="button"
-              aria-label="菜单"
-              aria-expanded={menuOpen}
-              onClick={() => {
-                setMenuOpen((v) => !v);
-                setSearchOpen(false);
-              }}
-            >
-              <MenuIcon />
-            </button>
-            {menuOpen && (
-              <div className="menu-pop" role="menu">
-                <button onClick={() => { setMenuOpen(false); navigate('/library?tab=history'); }}>历史记录</button>
-                <button onClick={() => { setMenuOpen(false); navigate('/library?tab=favorites'); }}>我的收藏</button>
-                <button onClick={() => { setMenuOpen(false); navigate('/settings'); }}>设置</button>
-              </div>
-            )}
-          </div>
-
+        <div className="header-actions">
+          <button
+            className="icon-btn menu-btn"
+            type="button"
+            aria-label="历史记录与收藏"
+            title="历史记录与收藏"
+            onClick={() => navigate('/library')}
+          >
+            <MenuIcon />
+          </button>
           <button
             className="theme-toggle"
             type="button"
