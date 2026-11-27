@@ -12,7 +12,6 @@ export function Loading({ text = '灯火正在加载……' }: { text?: string }
 export function Empty({ text, children }: { text: string; children?: ReactNode }) {
   return (
     <div className="state">
-      <div className="state-icon">◇</div>
       <p>{text}</p>
       {children}
     </div>

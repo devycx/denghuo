@@ -6,7 +6,7 @@ import { useRoute } from '../router';
 import { useStore } from '../store';
 import type { SearchItem } from '../types';
 
-const cacheKey = (q: string) => `denghuo:search:${q}`;
+const cacheKey = (q: string) => `denghuo:search:v2:${q}`;
 const scrollKey = 'denghuo:search:scroll';
 
 function readCache(q: string): SearchItem[] | null {

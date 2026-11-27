@@ -1,6 +1,6 @@
 import { cachedJson } from '../cache';
 import { cmsUrl, error, fetchUpstream, json, readJson } from '../http';
-import { dedupeAndSort, parseDetail, parseVodList, relevance } from '../cms';
+import { dedupeAndSort, filterRelevant, parseDetail, parseVodList, relevance } from '../cms';
 import { getConfig } from '../config';
 import type { RouteContext, SearchItem, VideoDetail } from '../types';
 
@@ -27,7 +27,7 @@ export async function search(ctx: RouteContext): Promise<Response> {
   const results = await Promise.all(
     sources.map(async (source) => {
       try {
-        return await cachedJson(`search:${source.key}`, wd, 180, async () => {
+        return await cachedJson(`search:v2:${source.key}`, wd, 180, async () => {
           const res = await fetchUpstream(cmsUrl(source.url, { ac: 'videolist', wd, pg: '1' }), 9000);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           return parseVodList(await res.json(), source);
@@ -38,8 +38,9 @@ export async function search(ctx: RouteContext): Promise<Response> {
     })
   );
 
-  // 只展示列表接口已确认带可播地址的结果，避免点进去发现无法播放。
-  const list = dedupeAndSort(results.flat(), wd)
+  // 上游可能把「无匹配」当作全部返回；相关性为 0 的结果必须丢掉，
+  // 否则搜「色戒」会混进完全不相干的片子。同时只保留已确认带可播地址的条目。
+  const list = filterRelevant(dedupeAndSort(results.flat(), wd), wd)
     .filter((item) => item.playable !== false)
     .slice(0, 150);
   return json({ list, sourceCount: sources.length });
@@ -65,7 +66,7 @@ export async function multiDetail(ctx: RouteContext): Promise<Response> {
   const candidates = await Promise.all(
     sources.map(async (source) => {
       try {
-        const list = await cachedJson(`search:${source.key}`, title, 180, async () => {
+        const list = await cachedJson(`search:v2:${source.key}`, title, 180, async () => {
           const res = await fetchUpstream(cmsUrl(source.url, { ac: 'videolist', wd: title, pg: '1' }), 9000);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           return parseVodList(await res.json(), source);

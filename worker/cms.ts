@@ -30,8 +30,15 @@ export function normalizeTitle(input: string): string {
     .toLowerCase()
     .normalize('NFKC')
     .replace(/[\s\p{P}\p{S}]+/gu, '')
+    .replace(/更新至?第?\d+集?|第?\d+集?完结|已完结|完结/g, '')
     .replace(/(19|20)\d{2}$/, '')
-    .replace(/^(电影|电视剧|连续剧|综艺|动漫)/, '');
+    .replace(/^(电影|电视剧|连续剧|综艺|动漫)/, '')
+    .replace(/(高清|超清|完整版|国语|粤语|全集|正片)$/g, '');
+}
+
+/** 上游常把「无匹配」当成全站列表返回；相关性为 0 的条目一律不算结果。 */
+export function filterRelevant(items: SearchItem[], keyword: string): SearchItem[] {
+  return items.filter((item) => relevance(item.name, keyword) >= 30);
 }
 
 /** 简单相关性打分：精确 > 前缀 > 包含，带年份/别名容错。 */

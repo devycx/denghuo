@@ -6,6 +6,9 @@ import { navigate, useRoute } from '../router';
 import { entryKey, useStore } from '../store';
 import type { VideoDetail } from '../types';
 
+const unique = (urls: (string | undefined)[]): string[] =>
+  urls.filter((u, i, all): u is string => Boolean(u) && all.indexOf(u) === i);
+
 export function Watch() {
   const route = useRoute();
   const source = route.params.get('source') || '';
@@ -15,6 +18,7 @@ export function Watch() {
   const { settings, saveHistory } = useStore();
   const [detail, setDetail] = useState<VideoDetail | null>(null);
   const [error, setError] = useState('');
+  const [fallbacks, setFallbacks] = useState<string[]>([]);
   const progressRef = useRef(0);
 
   useEffect(() => {
@@ -29,6 +33,34 @@ export function Watch() {
       alive = false;
     };
   }, [source, id]);
+
+  // 备用线路：先排当前详情的其它线路（立即可用），再在后台向其它源找同一集。
+  // 只保留地址，不展示来源名；播放失败时播放器会按顺序快速尝试。
+  useEffect(() => {
+    setFallbacks([]);
+    if (!detail) return;
+    let alive = true;
+    const local = detail.lines
+      .filter((_, i) => i !== lineIndex)
+      .map((l) => l.episodes[epIndex]?.url);
+    setFallbacks(unique(local));
+
+    api
+      .multiDetail(detail.title)
+      .then((res) => {
+        if (!alive) return;
+        const remote = res.list.flatMap((d) =>
+          d.lines.map((l) => l.episodes[Math.min(epIndex, l.episodes.length - 1)]?.url)
+        );
+        setFallbacks((prev) => unique([...prev, ...remote]));
+      })
+      .catch(() => {
+        /* 其它源不可用时仍可尝试当前详情的线路 */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [detail, lineIndex, epIndex]);
 
   const episode = detail?.lines[lineIndex]?.episodes[epIndex];
   const total = detail?.lines[lineIndex]?.episodes.length || 0;
@@ -87,14 +119,17 @@ export function Watch() {
           {episode ? (
             <Player
               url={episode.url}
+              fallbackUrls={fallbacks.filter((u) => u !== episode.url)}
               poster={detail.cover}
               title={`${detail.title} · ${episode.name}`}
               seekTo={progressRef.current}
               onProgress={persist}
               onEnded={() => settings.autoplay && epIndex + 1 < total && goto(epIndex + 1)}
+              onPrev={() => goto(epIndex - 1)}
+              onNext={() => goto(epIndex + 1)}
             />
           ) : (
-            <div className="state">该线路没有可播放的分集，请回详情页换源。</div>
+            <div className="state">该线路没有可播放的分集，请回详情页重试。</div>
           )}
 
           <div className="watch-controls">
@@ -106,9 +141,6 @@ export function Watch() {
             </span>
             <button className="btn" disabled={epIndex + 1 >= total} onClick={() => goto(epIndex + 1)}>
               下一集
-            </button>
-            <button className="btn ghost" onClick={() => navigate(`/detail?source=${source}&id=${id}`)}>
-              换源 / 选集
             </button>
           </div>
         </div>

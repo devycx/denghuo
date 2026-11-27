@@ -163,18 +163,26 @@ code {
 .searchbar button:hover { opacity: 0.75; }
 .searchbar button:active { transform: scale(0.92); }
 .searchbar button svg { width: 19px; height: 19px; display: block; }
+/* 导航区是纯图标，不是按钮：无底色、无描边、无按压缩放、无阴影。 */
+.header-actions {
+  margin-left: auto;
+  display: flex; align-items: center; gap: var(--sp-3);
+  flex-shrink: 0;
+}
 .icon-btn {
   width: 40px; height: 40px; flex-shrink: 0;
   display: grid; place-items: center;
-  border: 1px solid var(--line-soft);
+  border: 0;
+  background: transparent;
   border-radius: var(--r-pill);
-  background: var(--panel);
-  color: var(--muted);
-  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
 }
-.icon-btn:hover { background: var(--panel-2); color: var(--text); }
-.icon-btn svg { width: 19px; height: 19px; display: block; }
-.menu-wrap { position: relative; flex-shrink: 0; margin-left: auto; }
+.icon-btn:hover { color: var(--accent); background: transparent; }
+.icon-btn:active { transform: none; }
+.icon-btn svg { width: 22px; height: 22px; display: block; }
+.menu-wrap { position: relative; flex-shrink: 0; }
 .menu-pop {
   position: absolute; right: 0; top: 48px; z-index: 60;
   min-width: 168px; padding: var(--sp-2);
@@ -268,12 +276,23 @@ code {
   background: var(--bg);
   isolation: isolate;
 }
+/* 三张头图像贴在同一只旋转圆柱上的三张贴纸：
+   turn 连续累加，第三张之后接着转到第一张，不回退；手指左右滑动可直接拨动。 */
+.hero { perspective: 1400px; perspective-origin: 50% 50%; touch-action: pan-y; }
 .hero-images {
-  position: absolute; inset: 0;
-  display: flex;
+  position: absolute; inset: 0; z-index: 0;
+  transform-style: preserve-3d;
   transition: transform 900ms cubic-bezier(0.45, 0, 0.25, 1);
+  will-change: transform;
 }
-.hero-frame { position: relative; flex: 0 0 100%; height: 100%; overflow: hidden; }
+.hero-images.dragging { transition: none; }
+.hero-frame {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
 .hero-backdrop {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
@@ -459,10 +478,6 @@ code {
 }
 .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3); }
 .modal-head h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; }
-.icon-btn {
-  border: 0; background: transparent; color: var(--muted); font-size: 16px;
-  width: 40px; height: 40px; border-radius: var(--r-pill);
-}
 .source-candidate {
   width: 100%; display: flex; justify-content: space-between;
   background: var(--panel-2); border: 0;
@@ -477,7 +492,20 @@ code {
 .watch-top { display: flex; align-items: baseline; gap: var(--sp-5); margin-bottom: var(--sp-4); }
 .watch-top h1 { font-size: var(--fs-xl); margin: 0; font-weight: 600; }
 .watch-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--sp-5); }
-.player-box { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--r-lg); overflow: hidden; }
+.player-box {
+  position: relative; isolation: isolate;
+  width: 100%; aspect-ratio: 16 / 9; background: #000;
+  border-radius: var(--r-lg); overflow: hidden;
+}
+.player-mount { width: 100%; height: 100%; }
+.player-status {
+  position: absolute; inset: 0; z-index: 5;
+  display: grid; place-content: center; justify-items: center; gap: var(--sp-3);
+  background: rgba(0, 0, 0, 0.72); color: #fff; font-size: var(--fs-sm);
+}
+.player-status .btn.small { width: auto; margin-top: 0; }
+/* 旋转横屏兜底：ArtPlayer 根节点被移到 body 下，这里只管画面比例。 */
+.art-video-player.dh-rotated-fullscreen .art-video { object-fit: contain !important; }
 .watch-controls { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-4); flex-wrap: wrap; }
 .watch-side {
   background: var(--panel);
@@ -583,9 +611,19 @@ code {
   .page { padding: var(--sp-4) var(--sp-4) var(--sp-8); }
   .topbar-inner { padding: var(--sp-2) var(--sp-4); flex-wrap: nowrap; gap: var(--sp-2); min-height: 0; }
   .brand-name { font-size: 16px; }
-  .searchbar.open {
-    position: absolute; left: 12px; right: 12px; top: 58px;
+  .header-actions { gap: var(--sp-1); }
+  /* 移动端搜索栏始终占位，用 transform + opacity 展开/收起，避免 position 突变造成的顿挫。 */
+  .searchbar {
+    position: absolute; left: 12px; right: 12px; top: 54px;
     width: auto; max-width: none; z-index: 55;
+    opacity: 0; pointer-events: none;
+    transform: translateY(-10px) scale(0.985);
+    transform-origin: top center;
+    transition: opacity 200ms var(--ease), transform 280ms var(--ease);
+  }
+  .searchbar.open {
+    width: auto; max-width: none; opacity: 1; pointer-events: auto;
+    transform: none;
   }
   .card-row { grid-auto-columns: 132px; gap: var(--sp-3); }
   .searchbar button { padding: 0 12px; }
@@ -598,6 +636,28 @@ code {
   .detail-info h1 { font-size: var(--fs-2xl); }
   .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--sp-4) var(--sp-3); }
   .site-footer { flex-direction: column; align-items: center; gap: var(--sp-1); }
+}
+
+/* ---------- 播放器控件：触屏留安全区，窄屏收敛次要按钮 ---------- */
+@media (pointer: coarse) {
+  .art-video-player.art-fullscreen,
+  .art-video-player.art-fullscreen-web,
+  .art-video-player.dh-rotated-fullscreen { --art-padding: 32px; }
+  .art-video-player.art-fullscreen .art-bottom,
+  .art-video-player.art-fullscreen-web .art-bottom,
+  .art-video-player.dh-rotated-fullscreen .art-bottom {
+    padding-left: max(32px, env(safe-area-inset-left));
+    padding-right: max(32px, env(safe-area-inset-right));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 640px) {
+  .art-control-volume, .art-control-screenshot { display: none !important; }
+  .art-control-time { font-size: 11px; padding: 0 2px; }
+  .art-control-dh-fullscreen, .art-control-pip,
+  .art-control-prev-episode, .art-control-next-episode {
+    width: 40px !important; min-width: 40px !important;
+  }
 }
 
 /* 尊重系统减弱动效设置 */
@@ -674,18 +734,19 @@ html[data-theme='light'] .state, html[data-theme='light'] .site-footer, html[dat
 html[data-theme='light'] .site-footer{ border-top-color: var(--line-soft); }
 
 /* ---------- 主题切换：圆形扩散（View Transitions） ---------- */
+/* 主题切换同样是图标：不渲染成可按压的圆角按钮。 */
 .theme-toggle {
   width: 40px; height: 40px; flex-shrink: 0;
   display: grid; place-items: center;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-pill);
-  background: var(--panel);
+  border: 0; border-radius: var(--r-pill);
+  background: transparent;
   color: var(--text);
-  transition: background-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
 }
-.theme-toggle:hover { background: var(--panel-2); }
-.theme-toggle:active { transform: scale(0.94); }
-.theme-toggle svg { width: 18px; height: 18px; display: block; }
+.theme-toggle:hover { color: var(--accent); background: transparent; }
+.theme-toggle:active { transform: none; }
+.theme-toggle svg { width: 21px; height: 21px; display: block; }
 
 ::view-transition-old(root) { animation: none; }
 ::view-transition-new(root) {
