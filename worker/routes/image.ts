@@ -16,13 +16,30 @@ export async function proxyImage(ctx: RouteContext): Promise<Response> {
   try {
     // 豆瓣图床：带防盗链需 Referer；且 Cloudflare 出口到它的 HTTPS 常报 525，
     // 改走 http 取图（对外仍是 https，无混合内容），再由本 Worker 缓存下发。
-    const isDouban = /\.doubanio\.com$/i.test(new URL(raw).hostname);
-    const target = isDouban ? raw.replace(/^https:\/\//i, 'http://') : raw;
+    const origin = new URL(raw);
+    const isDouban = /\.doubanio\.com$/i.test(origin.hostname);
     const headers = isDouban ? { Referer: 'https://movie.douban.com/' } : undefined;
-    const upstream = await fetchUpstream(target, 8000, headers ? { headers } : undefined);
-    if (!upstream.ok) return error(`图片源响应失败 (${upstream.status})`, 502);
+    // 豆瓣单台图床偶发 403/404，按 img1/2/3/9 轮换重试。
+    const hosts = isDouban
+      ? ['img1.doubanio.com', 'img2.doubanio.com', 'img3.doubanio.com', 'img9.doubanio.com']
+      : [origin.host];
+    let upstream: Response | null = null;
+    for (const host of hosts) {
+      const u = new URL(raw);
+      u.host = host;
+      if (isDouban) u.protocol = 'http:';
+      try {
+        const candidate = await fetchUpstream(u.toString(), 8000, headers ? { headers } : undefined);
+        if (candidate.ok && /^image\//i.test(candidate.headers.get('content-type') || '')) {
+          upstream = candidate;
+          break;
+        }
+      } catch {
+        /* 换下一台图床 */
+      }
+    }
+    if (!upstream) return error('图片源响应失败', 502);
     const type = upstream.headers.get('content-type') || 'image/jpeg';
-    if (!/^image\//i.test(type)) return error('不是图片资源', 415);
     const res = new Response(upstream.body, {
       status: 200,
       headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=86400' },

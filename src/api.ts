@@ -20,8 +20,10 @@ function post<T>(path: string, body: unknown): Promise<T> {
 export const api = {
   config: () => request<SiteConfig>('/api/config'),
   home: () => request<{ rows: HomeRow[] }>('/api/home'),
-  douban: (type: 'tv' | 'movie', limit = 24) =>
-    request<{ items: DoubanHotItem[] }>(`/api/douban?type=${type}&tag=%E7%83%AD%E9%97%A8&limit=${limit}`),
+  douban: (type: 'tv' | 'movie', tag = '热门', limit = 24) =>
+    request<{ items: DoubanHotItem[] }>(
+      `/api/douban?type=${type}&tag=${encodeURIComponent(tag)}&limit=${limit}`
+    ),
   search: (wd: string, sources?: string[], filterAdult = true) =>
     post<{ list: SearchItem[]; sourceCount: number }>('/api/search', { wd, sources, filterAdult }),
   detail: (source: string, id: string) =>

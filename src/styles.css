@@ -160,6 +160,7 @@ code {
 }
 .searchbar button:hover { opacity: 0.75; }
 .searchbar button:active { transform: scale(0.92); }
+.searchbar button svg { width: 19px; height: 19px; display: block; }
 .nav { display: flex; gap: var(--sp-4); margin-left: auto; flex-shrink: 0; }
 .nav a {
   display: flex;
@@ -536,6 +537,8 @@ code {
 }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
 
+.search-done { margin: var(--sp-5) 0 0; font-size: var(--fs-xs); }
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 900px) {
   .watch-layout, .live-layout { grid-template-columns: 1fr; }
@@ -548,8 +551,10 @@ code {
   .topbar-inner { padding: var(--sp-2) var(--sp-4); flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); min-height: 0; }
   .brand-name { font-size: 16px; }
   .searchbar { order: 3; max-width: none; flex-basis: 100%; }
-  .nav { gap: var(--sp-3); }
-  .nav a { min-height: 44px; }
+  .nav { gap: var(--sp-2); margin-left: auto; }
+  .nav a { min-height: 44px; padding: 0 10px; }
+  .card-row { grid-auto-columns: 132px; gap: var(--sp-3); }
+  .searchbar button { padding: 0 12px; }
   .hero { height: 68vh; min-height: 440px; }
   .hero h1 { margin-bottom: var(--sp-4); }
   .hero-content { padding-bottom: var(--sp-8); }
@@ -655,7 +660,7 @@ html[data-theme='light'] .site-footer{ border-top-color: var(--line-soft); }
 
 ::view-transition-old(root) { animation: none; }
 ::view-transition-new(root) {
-  animation: theme-reveal 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: theme-reveal 1200ms cubic-bezier(0.45, 0, 0.25, 1) both;
   clip-path: circle(0 at var(--theme-origin-x, 50vw) var(--theme-origin-y, 50vh));
 }
 @keyframes theme-reveal {
@@ -665,3 +670,27 @@ html[data-theme='light'] .site-footer{ border-top-color: var(--line-soft); }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-new(root) { animation-duration: 0.01ms !important; }
 }
+/* ---------- 骨架屏：首页行 / 搜索等待 ---------- */
+.skeleton-card {
+  min-width: 0;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-md);
+  background: linear-gradient(100deg, var(--panel) 20%, var(--panel-2) 42%, var(--panel) 64%);
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.5s linear infinite;
+}
+html[data-theme='light'] .skeleton-card {
+  background: linear-gradient(100deg, #ececef 20%, #f7f7f9 42%, #ececef 64%);
+  background-size: 220% 100%;
+}
+@keyframes skeleton-shimmer { to { background-position-x: -220%; } }
+.hero-skeleton { display: grid; gap: 14px; width: min(420px, 100%); }
+.hero-skeleton span {
+  height: 20px; border-radius: 8px;
+  background: rgba(255, 255, 255, .16);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+.hero-skeleton span:first-child { width: 42%; height: 12px; }
+.hero-skeleton span:nth-child(2) { width: 88%; height: 46px; }
+.hero-skeleton span:last-child { width: 60%; }
+@keyframes skeleton-pulse { 50% { opacity: .45; } }

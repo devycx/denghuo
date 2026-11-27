@@ -4,10 +4,7 @@ import { useStore } from '../store';
 import { originFrom, transitionToTheme } from '../theme';
 
 const LINKS: { path: string; label: string }[] = [
-  { path: '/', label: '首页' },
-  { path: '/live', label: '直播' },
   { path: '/library', label: '我的' },
-  { path: '/settings', label: '设置' },
 ];
 
 export function Header() {
@@ -24,8 +21,7 @@ export function Header() {
     if (value) navigate(`/search?q=${encodeURIComponent(value)}`);
   };
 
-  const isActive = (path: string) =>
-    path === '/' ? route.path === '/' || route.path === '/search' : route.path === path;
+  const isActive = (path: string) => route.path === path;
 
   return (
     <header className="topbar">
@@ -42,7 +38,10 @@ export function Header() {
             aria-label="搜索"
           />
           <button type="submit" aria-label="搜索">
-            🔍
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+              <circle cx="10.8" cy="10.8" r="6.4" />
+              <path d="m15.6 15.6 4.4 4.4" />
+            </svg>
           </button>
         </form>
 

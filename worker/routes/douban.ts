@@ -90,7 +90,8 @@ export async function getDoubanHot(ctx: RouteContext): Promise<Response> {
   const limit = Math.min(40, Math.max(1, parseInt(ctx.url.searchParams.get('limit') || '24', 10) || 24));
 
   try {
-    const items = await cachedJson(`douban:${type}:${tag}`, String(limit), 600, async () => {
+    // 首页内容短时间基本不变：1 小时边缘缓存，Cron 每 30 分钟预热。
+    const items = await cachedJson(`douban:${type}:${tag}`, String(limit), 3600, async () => {
       try {
         return clean(await fromDouban(type, tag, limit), limit);
       } catch {
