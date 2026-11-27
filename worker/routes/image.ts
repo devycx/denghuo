@@ -19,7 +19,7 @@ export async function proxyImage(ctx: RouteContext): Promise<Response> {
       ? { Referer: 'https://movie.douban.com/' }
       : undefined;
     const upstream = await fetchUpstream(raw, 8000, headers ? { headers } : undefined);
-    if (!upstream.ok) return error('图片源响应失败', 502);
+    if (!upstream.ok) return error(`图片源响应失败 (${upstream.status})`, 502);
     const type = upstream.headers.get('content-type') || 'image/jpeg';
     if (!/^image\//i.test(type)) return error('不是图片资源', 415);
     const res = new Response(upstream.body, {
