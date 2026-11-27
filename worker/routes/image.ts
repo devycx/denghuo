@@ -14,11 +14,12 @@ export async function proxyImage(ctx: RouteContext): Promise<Response> {
   if (hit) return hit;
 
   try {
-    // 豆瓣图床带防盗链，伪装 Referer 后才能取到；高清大图同样适用。
-    const headers = /\.doubanio\.com$/i.test(new URL(raw).hostname)
-      ? { Referer: 'https://movie.douban.com/' }
-      : undefined;
-    const upstream = await fetchUpstream(raw, 8000, headers ? { headers } : undefined);
+    // 豆瓣图床：带防盗链需 Referer；且 Cloudflare 出口到它的 HTTPS 常报 525，
+    // 改走 http 取图（对外仍是 https，无混合内容），再由本 Worker 缓存下发。
+    const isDouban = /\.doubanio\.com$/i.test(new URL(raw).hostname);
+    const target = isDouban ? raw.replace(/^https:\/\//i, 'http://') : raw;
+    const headers = isDouban ? { Referer: 'https://movie.douban.com/' } : undefined;
+    const upstream = await fetchUpstream(target, 8000, headers ? { headers } : undefined);
     if (!upstream.ok) return error(`图片源响应失败 (${upstream.status})`, 502);
     const type = upstream.headers.get('content-type') || 'image/jpeg';
     if (!/^image\//i.test(type)) return error('不是图片资源', 415);
