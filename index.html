@@ -8,6 +8,15 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>灯火影视</title>
+    <script>
+      // 首帧前应用已保存的主题，避免白/黑闪屏。
+      try {
+        const saved = JSON.parse(localStorage.getItem('denghuo:v1') || '{}');
+        document.documentElement.dataset.theme = saved.settings?.theme === 'light' ? 'light' : 'dark';
+      } catch (_) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

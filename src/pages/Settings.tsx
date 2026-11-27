@@ -3,6 +3,7 @@ import { api } from '../api';
 import { ErrorState, Loading } from '../components/States';
 import { toast } from '../components/Toast';
 import { useStore } from '../store';
+import { originFrom, transitionToTheme } from '../theme';
 
 export function Settings() {
   const { settings, updateSettings, config, refreshConfig, history, favorites } = useStore();
@@ -57,10 +58,16 @@ export function Settings() {
             <p>深色更适合夜间观影</p>
           </div>
           <div className="segmented">
-            <button className={settings.theme === 'dark' ? 'on' : ''} onClick={() => updateSettings({ theme: 'dark' })}>
+            <button
+              className={settings.theme === 'dark' ? 'on' : ''}
+              onClick={(e) => transitionToTheme('dark', originFrom(e.currentTarget), () => updateSettings({ theme: 'dark' }))}
+            >
               深色
             </button>
-            <button className={settings.theme === 'light' ? 'on' : ''} onClick={() => updateSettings({ theme: 'light' })}>
+            <button
+              className={settings.theme === 'light' ? 'on' : ''}
+              onClick={(e) => transitionToTheme('light', originFrom(e.currentTarget), () => updateSettings({ theme: 'light' }))}
+            >
               浅色
             </button>
           </div>
