@@ -1,9 +1,10 @@
 import type ArtplayerType from 'artplayer';
 
 /**
- * 播放器控件（参考夜幕影视的产品思路，原创实现）：
+ * 播放器控件（对齐夜幕影视的最终交互）：
  * - 全屏按钮用 ArtPlayer 风格的实心图标，进入/退出两枚随状态切换；
- * - 点击走「原生全屏 → iOS 视频全屏 → 网页全屏 → 旋转横屏」降级链，手机不被系统旋转锁卡住；
+ * - 手机原生全屏优先（吞掉地址栏/状态栏），随后尽量锁横屏；锁失败也保留原生全屏，
+ *   只有浏览器连原生全屏都不支持时才退化到 CSS 旋转横屏（此时无法隐藏浏览器 UI）；
  * - 小窗按钮与上一集/下一集按钮作为自定义控件注册进 ArtPlayer 控制条。
  */
 
@@ -89,19 +90,33 @@ function enterRotated(art: ArtplayerType): void {
   root.classList.add(ROTATED);
   Object.assign(root.style, {
     position: 'fixed',
-    left: '50%',
-    top: '50%',
+    top: '0',
     zIndex: '99999',
-    width: `${window.innerHeight}px`,
-    height: `${window.innerWidth}px`,
-    transform: 'translate(-50%, -50%) rotate(90deg)',
-    transformOrigin: 'center center',
+    margin: '0',
+    transformOrigin: '0 0',
     borderRadius: '0',
   });
+  // 竖屏转 90°、横屏直接铺满；横竖屏切换后必须重算，否则画面方向/尺寸会错位
+  const applyLayout = () => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const portrait = h > w;
+    Object.assign(root.style, {
+      width: `${portrait ? h : w}px`,
+      height: `${portrait ? w : h}px`,
+      left: portrait ? `${w}px` : '0',
+      transform: portrait ? 'rotate(90deg)' : 'none',
+    });
+  };
+  applyLayout();
+  window.addEventListener('resize', applyLayout);
+  window.addEventListener('orientationchange', applyLayout);
   document.body.style.overflow = 'hidden';
   document.body.appendChild(root);
 
   restoreRotated = () => {
+    window.removeEventListener('resize', applyLayout);
+    window.removeEventListener('orientationchange', applyLayout);
     root.style.cssText = cssText;
     if (parent) parent.insertBefore(root, next);
     else document.body.removeChild(root);
@@ -109,13 +124,31 @@ function enterRotated(art: ArtplayerType): void {
   };
 }
 
-/** 全屏：手机进入时直接横屏（锁方向失败则 CSS 旋转），桌面保留原生 → 网页全屏降级链。 */
+/**
+ * 全屏：手机原生全屏优先（真正覆盖状态栏/地址栏），锁横屏失败也保留原生全屏；
+ * 桌面保留原生 → 网页全屏 → CSS 旋转兜底。
+ */
 export async function toggleFullscreen(art: ArtplayerType): Promise<void> {
   const video = art.video as WebkitVideo | null;
+  const $player = art.template.$player as HTMLDivElement & {
+    webkitRequestFullscreen?: (options?: FullscreenOptions) => Promise<void> | void;
+  };
+  const options: FullscreenOptions = { navigationUI: 'hide' };
+  const requestNative = async () => {
+    if ($player.requestFullscreen) return $player.requestFullscreen(options);
+    if ($player.webkitRequestFullscreen) return $player.webkitRequestFullscreen(options);
+    // 两个进入方法都没有时不能把 `await undefined` 当成成功，否则按钮又成死的
+    throw new Error('container fullscreen unavailable');
+  };
 
   // 任何形态的全屏都先退出。
   if (isRotated(art)) {
     exitRotated(art);
+    syncFullscreenIcon(false);
+    return;
+  }
+  if (video?.webkitDisplayingFullscreen) {
+    video.webkitExitFullscreen?.();
     syncFullscreenIcon(false);
     return;
   }
@@ -130,26 +163,28 @@ export async function toggleFullscreen(art: ArtplayerType): Promise<void> {
     syncFullscreenIcon(false);
     return;
   }
-  if (video?.webkitDisplayingFullscreen) {
-    video.webkitExitFullscreen?.();
-    syncFullscreenIcon(false);
-    return;
-  }
 
   if (isMobilePlayer()) {
+    // 1) 容器原生全屏：Chrome/Android 上吞掉浏览器 UI；方向锁成功与否都保留它，
+    //    不能因为锁失败就退回 CSS 旋转——那样地址栏又露出来了。
     try {
-      await art.template.$player.requestFullscreen();
-      if (await lockLandscape()) {
-        syncFullscreenIcon(true);
-        return;
-      }
-      // 锁方向失败时原生全屏仍是竖屏，退回 CSS 旋转横屏。
-      await document.exitFullscreen().catch(() => {});
-      enterRotated(art);
+      await requestNative();
+      void lockLandscape();
       syncFullscreenIcon(true);
       return;
     } catch {
-      /* WebView 不支持容器全屏，继续走 iOS / 旋转兜底 */
+      /* WebView 不支持容器全屏，继续降 */
+    }
+    // 2) video 元素的原生全屏：iOS Safari / WKWebView
+    if (video && typeof video.requestFullscreen === 'function') {
+      try {
+        await video.requestFullscreen(options);
+        void lockLandscape();
+        syncFullscreenIcon(true);
+        return;
+      } catch {
+        /* 继续降 */
+      }
     }
     try {
       video?.webkitEnterFullscreen?.();
@@ -160,17 +195,19 @@ export async function toggleFullscreen(art: ArtplayerType): Promise<void> {
     } catch {
       /* iOS 私有 API 不可用 */
     }
+    // 3) 最后兜底：CSS 旋转横屏（无法隐藏浏览器 UI）
     enterRotated(art);
     syncFullscreenIcon(true);
     return;
   }
 
+  // 桌面：容器原生全屏 → 程序化网页全屏 → CSS 旋转兜底
   try {
-    await art.template.$player.requestFullscreen();
+    await requestNative();
     syncFullscreenIcon(true);
     return;
   } catch {
-    /* 桌面浏览器不支持，继续降级 */
+    /* 继续降级 */
   }
   try {
     art.fullscreenWeb = true;
@@ -187,11 +224,14 @@ export async function toggleFullscreen(art: ArtplayerType): Promise<void> {
 export function togglePip(art: ArtplayerType): void {
   const native = (document as Document & { pictureInPictureEnabled?: boolean }).pictureInPictureEnabled;
   const webkitVideo = art.video as (HTMLVideoElement & { webkitSupportsPresentationMode?: boolean }) | null;
-  if (!native && !webkitVideo?.webkitSupportsPresentationMode) return;
+  if (!native && !webkitVideo?.webkitSupportsPresentationMode) {
+    art.notice.show = '当前浏览器不支持小窗播放，请用系统浏览器打开';
+    return;
+  }
   try {
     art.pip = !art.pip;
   } catch {
-    /* 不支持时保持原状 */
+    art.notice.show = '小窗播放启动失败，请确认视频正在播放';
   }
 }
 
