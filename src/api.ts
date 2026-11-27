@@ -26,6 +26,10 @@ export const api = {
     ),
   search: (wd: string, sources?: string[], filterAdult = true) =>
     post<{ list: SearchItem[]; sourceCount: number }>('/api/search', { wd, sources, filterAdult }),
+  resolve: (title: string) =>
+    request<{ sourceKey: string; vodId: string; title: string }>(
+      `/api/resolve?title=${encodeURIComponent(title)}`
+    ),
   detail: (source: string, id: string) =>
     request<VideoDetail>(`/api/detail?source=${encodeURIComponent(source)}&id=${encodeURIComponent(id)}`),
   multiDetail: (title: string, sources?: string[]) =>

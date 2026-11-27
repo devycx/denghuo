@@ -11,11 +11,13 @@ const CACHE_TTL = 60 * 60 * 1000;
 const ROWS = [
   { key: 'tv-hot', title: '最近热门 · 剧集', type: 'tv' as const, tag: '热门' },
   { key: 'movie-hot', title: '最近热门 · 电影', type: 'movie' as const, tag: '热门' },
+  { key: 'show-hot', title: '热播综艺', type: 'tv' as const, tag: '综艺' },
   { key: 'tv-cn', title: '国产好剧', type: 'tv' as const, tag: '国产剧' },
   { key: 'movie-classic', title: '经典电影', type: 'movie' as const, tag: '经典' },
 ];
 
 type Rows = Record<string, DoubanHotItem[]>;
+type PlayRef = { source: string; id: string };
 
 function readCache(): Rows {
   try {
@@ -29,8 +31,8 @@ function readCache(): Rows {
   }
 }
 
-/** 豆瓣海报路径：s_ratio_poster / m_ratio_poster 换成 large 取高清大图做全幅背景。 */
-function heroCover(cover: string): string {
+/** 豆瓣公开图床的最高分辨率是 large（原始约 1000px+）；raw 路径已 404。 */
+function coverLarge(cover: string): string {
   return cover.replace('s_ratio_poster', 'large').replace('m_ratio_poster', 'large');
 }
 
@@ -48,7 +50,8 @@ function SkeletonRow({ title }: { title: string }) {
 export function Home() {
   const [rows, setRows] = useState<Rows>(readCache);
   const [error, setError] = useState('');
-  const [heroPlay, setHeroPlay] = useState<{ source: string; id: string } | null>(null);
+  const [index, setIndex] = useState(0);
+  const [playMap, setPlayMap] = useState<Record<string, PlayRef>>({});
 
   useEffect(() => {
     let alive = true;
@@ -64,8 +67,7 @@ export function Home() {
     ).then((entries) => {
       if (!alive) return;
       const next = Object.fromEntries(entries) as Rows;
-      const filled = Object.values(next).some((items) => items.length > 0);
-      if (!filled) {
+      if (!Object.values(next).some((items) => items.length > 0)) {
         setError('热门内容暂时不可用');
         return;
       }
@@ -73,7 +75,7 @@ export function Home() {
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), rows: next }));
       } catch {
-        /* 隐私模式下忽略 */
+        /* 隐私模式忽略 */
       }
     });
     return () => {
@@ -81,52 +83,69 @@ export function Home() {
     };
   }, []);
 
-  const hero = rows['tv-hot']?.[0];
-  const heroTitle = hero?.title;
+  const slides = [
+    rows['tv-hot']?.[0] && { key: 'tv-hot', label: '最近热门 · 剧集', item: rows['tv-hot'][0] },
+    rows['movie-hot']?.[0] && { key: 'movie-hot', label: '最近热门 · 电影', item: rows['movie-hot'][0] },
+    rows['show-hot']?.[0] && { key: 'show-hot', label: '热播综艺', item: rows['show-hot'][0] },
+  ].filter(Boolean) as { key: string; label: string; item: DoubanHotItem }[];
 
-  // 头图一出现就提前把可播放的源/片 ID 备好，按钮点下去直接进播放页。
+  // 头图一出现就把三张主推的播放源提前备好，点按钮直接进播放页。
+  const slideKeys = slides.map((s) => `${s.key}:${s.item.title}`).join('|');
   useEffect(() => {
-    if (!heroTitle) return;
+    if (!slideKeys) return;
     let alive = true;
-    setHeroPlay(null);
-    api
-      .multiDetail(heroTitle)
-      .then((res) => {
-        const match = res.list.find((d) => d.lines?.some((line) => line.episodes.length > 0));
-        if (alive && match) setHeroPlay({ source: match.sourceKey, id: match.vodId });
-      })
-      .catch(() => {});
+    for (const slide of slides) {
+      api
+        .resolve(slide.item.title)
+        .then((res) => {
+          if (alive) setPlayMap((prev) => ({ ...prev, [slide.key]: { source: res.sourceKey, id: res.vodId } }));
+        })
+        .catch(() => {});
+    }
     return () => {
       alive = false;
     };
-  }, [heroTitle]);
+  }, [slideKeys]);
 
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const timer = setInterval(() => setIndex((i) => (i + 1) % slides.length), 7000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  const slide = slides[index % Math.max(1, slides.length)];
   const play = async () => {
-    if (!heroTitle) return;
-    if (heroPlay) {
-      navigate(`/watch?source=${encodeURIComponent(heroPlay.source)}&id=${encodeURIComponent(heroPlay.id)}`);
+    if (!slide) return;
+    const ready = playMap[slide.key];
+    if (ready) {
+      navigate(`/watch?source=${encodeURIComponent(ready.source)}&id=${encodeURIComponent(ready.id)}`);
       return;
     }
     try {
-      const res = await api.multiDetail(heroTitle);
-      const match = res.list.find((d) => d.lines?.some((line) => line.episodes.length > 0));
-      if (match) navigate(`/watch?source=${encodeURIComponent(match.sourceKey)}&id=${encodeURIComponent(match.vodId)}`);
+      const res = await api.resolve(slide.item.title);
+      navigate(`/watch?source=${encodeURIComponent(res.sourceKey)}&id=${encodeURIComponent(res.vodId)}`);
     } catch {
-      navigate(`/search?q=${encodeURIComponent(heroTitle)}`);
+      navigate(`/search?q=${encodeURIComponent(slide.item.title)}`);
     }
   };
 
   return (
     <div className="page home">
       <section className="hero">
-        {hero && <img className="hero-backdrop" src={img(heroCover(hero.cover))} alt="" aria-hidden="true" />}
-        <div className="hero-shade" aria-hidden="true" />
+        <div className="hero-images" style={{ transform: `translateX(-${index * 100}%)` }}>
+          {slides.map((s) => (
+            <div className="hero-frame" key={s.key}>
+              <img className="hero-backdrop" src={img(coverLarge(s.item.cover))} alt="" aria-hidden="true" />
+            </div>
+          ))}
+          {!slides.length && <div className="hero-frame" />}
+        </div>
         <div className="hero-content">
-          {hero ? (
+          {slide ? (
             <>
-              <p className="hero-kicker">最近热门 · 剧集</p>
-              <h1>{hero.title}</h1>
-              {hero.rating && <p className="hero-rating">{hero.rating}</p>}
+              <p className="hero-kicker">{slide.label}</p>
+              <h1>{slide.item.title}</h1>
+              {slide.item.rating && <p className="hero-rating">{slide.item.rating}</p>}
               <div className="hero-actions">
                 <button className="btn primary" onClick={play}>▶ 立即播放</button>
               </div>
@@ -135,6 +154,18 @@ export function Home() {
             <div className="hero-skeleton"><span /><span /><span /></div>
           )}
         </div>
+        {slides.length > 1 && (
+          <div className="hero-dots" aria-label="头图轮播">
+            {slides.map((s, i) => (
+              <button
+                key={s.key}
+                className={i === index ? 'on' : ''}
+                aria-label={`第 ${i + 1} 张：${s.item.title}`}
+                onClick={() => setIndex(i)}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {error && <ErrorState message={error} onRetry={() => window.location.reload()} />}
@@ -144,7 +175,9 @@ export function Home() {
             <section className="row-section" key={row.key}>
               <div className="row-heading"><h2>{row.title}</h2></div>
               <div className="card-row">
-                {rows[row.key].map((item) => <HotCard key={item.id} item={item} />)}
+                {rows[row.key].map((item, i) => (
+                  <HotCard key={item.id} item={item} large={i < 3} />
+                ))}
               </div>
             </section>
           ) : (

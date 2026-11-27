@@ -38,7 +38,10 @@ export async function search(ctx: RouteContext): Promise<Response> {
     })
   );
 
-  const list = dedupeAndSort(results.flat(), wd).slice(0, 150);
+  // 只展示列表接口已确认带可播地址的结果，避免点进去发现无法播放。
+  const list = dedupeAndSort(results.flat(), wd)
+    .filter((item) => item.playable !== false)
+    .slice(0, 150);
   return json({ list, sourceCount: sources.length });
 }
 
@@ -67,7 +70,9 @@ export async function multiDetail(ctx: RouteContext): Promise<Response> {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           return parseVodList(await res.json(), source);
         });
-        const best = list.slice().sort((a, b) => relevance(b.name, title) - relevance(a.name, title))[0];
+        const best = list
+          .filter((item) => item.playable !== false)
+          .sort((a, b) => relevance(b.name, title) - relevance(a.name, title))[0];
         if (!best || relevance(best.name, title) < 40) return null;
         return await cachedJson(`detail:${source.key}`, best.vodId, 600, async () => {
           const res = await fetchUpstream(cmsUrl(source.url, { ac: 'detail', ids: best.vodId }), 9000);

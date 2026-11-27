@@ -60,6 +60,8 @@ export function parseVodList(data: unknown, source: Source): SearchItem[] {
     if (!name || !vodId) continue;
     const typeName = str(v.vod_type) || str(v.type_name);
     const pic = str(v.vod_pic);
+    const playUrl = str(v.vod_play_url) || '';
+    const playable = /https?:\/\//i.test(playUrl) && /(m3u8|mp4|\.ts)(?:[?#]|$)/i.test(playUrl);
     items.push({
       sourceKey: source.key,
       sourceName: source.name,
@@ -70,6 +72,7 @@ export function parseVodList(data: unknown, source: Source): SearchItem[] {
       year: str(v.vod_year),
       area: str(v.vod_area),
       remarks: str(v.vod_remarks),
+      playable,
       isAdult: Boolean(source.isAdult) || /成人|伦理|情色|艳|成人片/.test(typeName || ''),
     });
   }

@@ -25,6 +25,8 @@ export interface SearchItem {
   area?: string;
   remarks?: string;
   isAdult?: boolean;
+  /** 列表接口已带可播地址，无需额外详情请求即可过滤不可播条目 */
+  playable?: boolean;
   /** 同名同年在其它源也出现了几条（聚合去重的副产物） */
   altCount?: number;
 }

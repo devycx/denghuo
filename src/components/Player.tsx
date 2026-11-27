@@ -46,10 +46,12 @@ export function Player({ url, poster, title, live = false, seekTo = 0, onProgres
         type: isHls ? 'customHls' : undefined,
         customType: isHls
           ? {
-              customHls(video: HTMLVideoElement) {
+              // ArtPlayer 的 customType 回调签名是 (video, url, art)；使用自定义 type 时
+              // 它不会给 video.src 赋值，真正的播放地址在第二个参数里。
+              customHls(video: HTMLVideoElement, sourceUrl: string) {
                 const instance = new Hls({ enableWorker: true, lowLatencyMode: live });
                 hls = instance;
-                instance.loadSource(video.src);
+                instance.loadSource(sourceUrl || video.src);
                 instance.attachMedia(video);
               },
             }

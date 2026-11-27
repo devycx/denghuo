@@ -13,6 +13,8 @@ export function transitionToTheme(theme: Theme, origin: Point, apply: () => void
 
   const commit = () => {
     root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#ffffff' : '#000000');
     apply();
   };
 

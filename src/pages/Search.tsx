@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { VideoCard } from '../components/VideoCard';
 import { Empty, ErrorState } from '../components/States';
@@ -6,95 +6,91 @@ import { useRoute } from '../router';
 import { useStore } from '../store';
 import type { SearchItem } from '../types';
 
+const cacheKey = (q: string) => `denghuo:search:${q}`;
+const scrollKey = 'denghuo:search:scroll';
+
+function readCache(q: string): SearchItem[] | null {
+  try {
+    const raw = sessionStorage.getItem(cacheKey(q));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { at?: number; items?: SearchItem[] };
+    if (!parsed.at || Date.now() - parsed.at > 30 * 60 * 1000 || !Array.isArray(parsed.items)) return null;
+    return parsed.items;
+  } catch {
+    return null;
+  }
+}
+
 export function SearchPage() {
   const route = useRoute();
   const q = route.params.get('q') || '';
-  const { config, settings, updateSettings } = useStore();
+  const { config, settings } = useStore();
   const [items, setItems] = useState<SearchItem[]>([]);
   const [pending, setPending] = useState(0);
-  const [done, setDone] = useState(0);
   const [error, setError] = useState('');
+  const itemsRef = useRef<SearchItem[]>([]);
 
   useEffect(() => {
     if (!q) {
       setItems([]);
-      setPending(0);
+      itemsRef.current = [];
       return;
     }
     let alive = true;
-    const sources = (config?.sources || []).filter((s) => {
-      if (settings.adultFilter && s.isAdult) return false;
-      return settings.selectedSources.length === 0 || settings.selectedSources.includes(s.key);
-    });
-    setItems([]);
-    setDone(0);
-    setPending(sources.length);
-    setError('');
+    const cached = readCache(q);
+    if (cached) {
+      itemsRef.current = cached;
+      setItems(cached);
+      setPending(0);
+      const y = Number(sessionStorage.getItem(scrollKey) || 0);
+      requestAnimationFrame(() => window.scrollTo(0, y));
+      return () => {
+        alive = false;
+      };
+    }
 
-    // 每个源独立请求，谁先回来就默默追加到列表末尾，不重排已有结果。
+    setItems([]);
+    itemsRef.current = [];
+    setError('');
+    const sources = (config?.sources || []).filter((s) => !(settings.adultFilter && s.isAdult));
+    setPending(sources.length);
+
     for (const source of sources) {
       api
         .search(q, [source.key], settings.adultFilter)
         .then((res) => {
           if (!alive) return;
-          setItems((prev) => [...prev, ...res.list]);
-          setDone((n) => n + 1);
+          const next = [...itemsRef.current, ...res.list];
+          itemsRef.current = next;
+          setItems(next);
           setPending((n) => n - 1);
+          try {
+            sessionStorage.setItem(cacheKey(q), JSON.stringify({ at: Date.now(), items: next }));
+          } catch {
+            /* 隐私模式忽略 */
+          }
         })
-        .catch(() => {
-          if (!alive) return;
-          setDone((n) => n + 1);
-          setPending((n) => n - 1);
-        });
+        .catch(() => alive && setPending((n) => n - 1));
     }
+
     return () => {
       alive = false;
+      sessionStorage.setItem(scrollKey, String(window.scrollY));
     };
-  }, [q, config?.sources, settings.selectedSources, settings.adultFilter]);
-
-  const toggleSource = (key: string) => {
-    const current = settings.selectedSources;
-    updateSettings({
-      selectedSources: current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
-    });
-  };
+  }, [q, config?.sources, settings.adultFilter]);
 
   const loading = !config || pending > 0;
-  const unique = Array.from(new Map(items.map((item) => [`${item.sourceKey}:${item.vodId}`, item])).values());
 
   return (
     <div className="page">
       <div className="page-head">
-        <div>
-          <h1>搜索 “{q}”</h1>
-          <p className="muted">
-            {loading
-              ? `已收到 ${unique.length} 条 · 还有 ${pending} 个源在检索`
-              : `${unique.length} 条结果`}
-          </p>
-        </div>
-      </div>
-
-      <div className="filter-bar">
-        <span className="filter-title">资源源</span>
-        <button className={`chip ${settings.selectedSources.length === 0 ? 'on' : ''}`} onClick={() => updateSettings({ selectedSources: [] })}>
-          全部
-        </button>
-        {config?.sources.map((s) => (
-          <button
-            key={s.key}
-            className={`chip ${settings.selectedSources.includes(s.key) ? 'on' : ''}`}
-            onClick={() => toggleSource(s.key)}
-          >
-            {s.name}
-          </button>
-        ))}
+        <div><h1>搜索 “{q}”</h1></div>
       </div>
 
       {error && <ErrorState message={error} onRetry={() => window.location.reload()} />}
 
       <div className="grid">
-        {unique.map((item) => (
+        {items.map((item) => (
           <VideoCard key={`${item.sourceKey}:${item.vodId}`} item={item} />
         ))}
         {loading &&
@@ -103,10 +99,7 @@ export function SearchPage() {
           ))}
       </div>
 
-      {!loading && unique.length === 0 && <Empty text="没有找到匹配的内容，换个关键词试试。" />}
-      {done > 0 && pending === 0 && unique.length > 0 && (
-        <p className="muted search-done">已检索全部 {done} 个源</p>
-      )}
+      {!loading && items.length === 0 && <Empty text="没有找到匹配的内容，换个关键词试试。" />}
     </div>
   );
 }

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { VideoCard } from '../components/VideoCard';
 import { Empty } from '../components/States';
-import { navigate } from '../router';
+import { navigate, useRoute } from '../router';
 import { useStore } from '../store';
 import type { SearchItem } from '../types';
 
@@ -9,11 +9,15 @@ type Tab = 'history' | 'favorites';
 
 export function Library() {
   const { history, favorites, clearHistory } = useStore();
-  const [tab, setTab] = useState<Tab>('history');
+  const route = useRoute();
+  const [tab, setTab] = useState<Tab>(route.params.get('tab') === 'favorites' ? 'favorites' : 'history');
+  useEffect(() => {
+    setTab(route.params.get('tab') === 'favorites' ? 'favorites' : 'history');
+  }, [route.params]);
 
-  const asItem = (entry: { sourceKey: string; vodId: string; title: string; pic?: string; epName?: string; sourceName?: string }): SearchItem => ({
+  const asItem = (entry: { sourceKey: string; vodId: string; title: string; pic?: string; epName?: string }): SearchItem => ({
     sourceKey: entry.sourceKey,
-    sourceName: entry.sourceName || (tab === 'history' ? '最近观看' : '我的收藏'),
+    sourceName: '',
     vodId: entry.vodId,
     name: entry.title,
     pic: entry.pic,
@@ -24,50 +28,35 @@ export function Library() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>我的片单</h1>
-          <p className="muted">仅保存在本机浏览器，不上传、不追踪。</p>
-        </div>
+      <div className="library-tabs">
+        <button className={tab === 'history' ? 'on' : ''} onClick={() => setTab('history')}>历史记录</button>
+        <button className={tab === 'favorites' ? 'on' : ''} onClick={() => setTab('favorites')}>我的收藏</button>
         {tab === 'history' && history.length > 0 && (
-          <button className="btn ghost" onClick={clearHistory}>
-            清空观看记录
-          </button>
+          <button className="library-clear" onClick={clearHistory}>清空</button>
         )}
       </div>
 
-      <div className="line-tabs large">
-        <button className={tab === 'history' ? 'on' : ''} onClick={() => setTab('history')}>
-          观看记录（{history.length}）
-        </button>
-        <button className={tab === 'favorites' ? 'on' : ''} onClick={() => setTab('favorites')}>
-          我的收藏（{favorites.length}）
-        </button>
+      <div className="library-body">
+        {entries.length === 0 ? (
+          <Empty text={tab === 'history' ? '暂无历史记录' : '暂无收藏'} />
+        ) : (
+          <div className="grid">
+            {entries.map((entry) => (
+              <div className="library-entry" key={entry.key}>
+                <VideoCard item={asItem(entry)} />
+                {tab === 'history' && 'epIndex' in entry && (
+                  <button
+                    className="btn small"
+                    onClick={() => navigate(`/watch?source=${entry.sourceKey}&id=${entry.vodId}&ep=${entry.epIndex}`)}
+                  >
+                    继续播放
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-
-      {entries.length === 0 ? (
-        <Empty text={tab === 'history' ? '还没有观看记录' : '还没有收藏的影片'} />
-      ) : (
-        <div className="grid">
-          {entries.map((entry) => (
-            <div className="library-entry" key={entry.key}>
-              <VideoCard item={asItem(entry)} />
-              {tab === 'history' && 'epIndex' in entry && (
-                <button
-                  className="btn small"
-                  onClick={() =>
-                    navigate(
-                      `/watch?source=${entry.sourceKey}&id=${entry.vodId}&ep=${entry.epIndex}`
-                    )
-                  }
-                >
-                  继续播放
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
