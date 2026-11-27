@@ -605,13 +605,26 @@ code {
 @media (pointer: coarse) {
   .art-video-player.art-fullscreen,
   .art-video-player.art-fullscreen-web,
-  .art-video-player.dh-rotated-fullscreen { --art-padding: 32px; }
+  .art-video-player.dh-rotated-fullscreen {
+    --art-padding: 48px;
+    --art-control-height: 60px;
+  }
   .art-video-player.art-fullscreen .art-bottom,
   .art-video-player.art-fullscreen-web .art-bottom,
   .art-video-player.dh-rotated-fullscreen .art-bottom {
-    padding-left: max(32px, env(safe-area-inset-left));
-    padding-right: max(32px, env(safe-area-inset-right));
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    padding-left: max(48px, env(safe-area-inset-left));
+    padding-right: max(48px, env(safe-area-inset-right));
+    padding-bottom: calc(40px + env(safe-area-inset-bottom));
+  }
+  /* ArtPlayer 运行时会给两侧控件注入负 margin，正好抵消上面的 padding；必须覆盖掉。 */
+  .art-video-player.art-fullscreen .art-controls-left,
+  .art-video-player.art-fullscreen .art-controls-right,
+  .art-video-player.art-fullscreen-web .art-controls-left,
+  .art-video-player.art-fullscreen-web .art-controls-right,
+  .art-video-player.dh-rotated-fullscreen .art-controls-left,
+  .art-video-player.dh-rotated-fullscreen .art-controls-right {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 }
 @media (max-width: 640px) {
