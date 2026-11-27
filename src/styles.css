@@ -130,19 +130,14 @@ code {
   margin: 0 auto;
   min-height: 56px;
   padding: var(--sp-2) var(--sp-5);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
   gap: var(--sp-4);
 }
-.brand { justify-self: start; display: flex; align-items: center; flex-shrink: 0; white-space: nowrap; }
+.brand { display: flex; align-items: center; flex-shrink: 0; white-space: nowrap; }
 .brand-name { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
 
-/* 搜索常驻中间：平时只有一枚图标，点开后输入框在同一行向左右展开，不弹下拉。 */
-.search-center {
-  justify-self: center;
-  display: flex; align-items: center; min-width: 0;
-}
+/* 搜索图标固定挨着三横线；点开后输入框在同一行向左侧展开，不弹下拉。 */
 .searchbar {
   width: 0; max-width: 0;
   display: flex; align-items: center;
@@ -160,7 +155,7 @@ code {
 
 /* 导航区是纯图标，不是按钮：无底色、无描边、无按压缩放、无阴影。 */
 .header-actions {
-  justify-self: end;
+  margin-left: auto;
   display: flex; align-items: center; gap: var(--sp-3);
   flex-shrink: 0;
 }
@@ -177,7 +172,6 @@ code {
 .icon-btn:hover { color: var(--accent); background: transparent; }
 .icon-btn:active { transform: none; }
 .icon-btn svg { width: 22px; height: 22px; display: block; }
-.search-toggle { margin-left: var(--sp-2); }
 
 /* ---------- Common ---------- */
 .btn {

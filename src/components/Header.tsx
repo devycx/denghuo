@@ -27,10 +27,13 @@ export function Header() {
   const [text, setText] = useState(query);
   const [searchOpen, setSearchOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // 三横线第一次进「历史记录 / 收藏」，第二次回到进来之前的页面。
+  const backRef = useRef('/');
 
   useEffect(() => setText(query), [query]);
   useEffect(() => {
     setSearchOpen(false);
+    if (route.path !== '/library') backRef.current = window.location.hash.slice(1) || '/';
   }, [route.path]);
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus();
@@ -55,6 +58,14 @@ export function Header() {
     else setSearchOpen(false);
   };
 
+  const onMenuClick = () => {
+    if (route.path === '/library') navigate(backRef.current || '/');
+    else {
+      backRef.current = window.location.hash.slice(1) || '/';
+      navigate('/library');
+    }
+  };
+
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -62,7 +73,7 @@ export function Header() {
           <span className="brand-name">{config?.siteName || '灯火影视'}</span>
         </a>
 
-        <div className="search-center">
+        <div className="header-actions">
           <form className={`searchbar ${searchOpen ? 'open' : ''}`} onSubmit={submit} role="search">
             <input
               ref={inputRef}
@@ -84,18 +95,17 @@ export function Header() {
           >
             <SearchIcon />
           </button>
-        </div>
 
-        <div className="header-actions">
           <button
             className="icon-btn menu-btn"
             type="button"
-            aria-label="历史记录与收藏"
-            title="历史记录与收藏"
-            onClick={() => navigate('/library')}
+            aria-label={route.path === '/library' ? '返回原界面' : '历史记录与收藏'}
+            title={route.path === '/library' ? '返回原界面' : '历史记录与收藏'}
+            onClick={onMenuClick}
           >
             <MenuIcon />
           </button>
+
           <button
             className="theme-toggle"
             type="button"
