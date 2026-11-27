@@ -152,7 +152,7 @@ export function Player({
               },
             }
           : {}),
-        setting: true,
+        setting: false,
         fullscreen: false,
         fullscreenWeb: false,
         pip: false,

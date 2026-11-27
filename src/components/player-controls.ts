@@ -40,6 +40,29 @@ type WebkitVideo = HTMLVideoElement & {
 
 const ROTATED = 'dh-rotated-fullscreen';
 let restoreRotated: (() => void) | null = null;
+let orientationLocked = false;
+
+const isMobilePlayer = () =>
+  matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod|Mobile|MicroMessenger/i.test(navigator.userAgent);
+
+async function lockLandscape(): Promise<boolean> {
+  const orientation = screen.orientation as (ScreenOrientation & { lock?: (value: string) => Promise<void> }) | undefined;
+  if (!orientation?.lock) return false;
+  try {
+    await orientation.lock('landscape');
+    orientationLocked = true;
+    return true;
+  } catch {
+    // 内嵌 WebView 常禁止锁定方向，交给 CSS 旋转兜底。
+    return false;
+  }
+}
+
+function unlockLandscape(): void {
+  if (!orientationLocked) return;
+  screen.orientation?.unlock?.();
+  orientationLocked = false;
+}
 
 function isRotated(art: ArtplayerType): boolean {
   return art.template.$player.classList.contains(ROTATED);
@@ -47,6 +70,7 @@ function isRotated(art: ArtplayerType): boolean {
 
 function exitRotated(art: ArtplayerType): void {
   const root = art.template.$player;
+  unlockLandscape();
   restoreRotated?.();
   restoreRotated = null;
   root.classList.remove(ROTATED);
@@ -85,16 +109,19 @@ function enterRotated(art: ArtplayerType): void {
   };
 }
 
-/** 全屏：优先标准 API，逐层降级，确保手机控制条上的按钮点了总有反应。 */
+/** 全屏：手机进入时直接横屏（锁方向失败则 CSS 旋转），桌面保留原生 → 网页全屏降级链。 */
 export async function toggleFullscreen(art: ArtplayerType): Promise<void> {
   const video = art.video as WebkitVideo | null;
 
+  // 任何形态的全屏都先退出。
   if (isRotated(art)) {
     exitRotated(art);
+    syncFullscreenIcon(false);
     return;
   }
   if (document.fullscreenElement) {
     await document.exitFullscreen().catch(() => {});
+    unlockLandscape();
     syncFullscreenIcon(false);
     return;
   }
@@ -109,21 +136,41 @@ export async function toggleFullscreen(art: ArtplayerType): Promise<void> {
     return;
   }
 
+  if (isMobilePlayer()) {
+    try {
+      await art.template.$player.requestFullscreen();
+      if (await lockLandscape()) {
+        syncFullscreenIcon(true);
+        return;
+      }
+      // 锁方向失败时原生全屏仍是竖屏，退回 CSS 旋转横屏。
+      await document.exitFullscreen().catch(() => {});
+      enterRotated(art);
+      syncFullscreenIcon(true);
+      return;
+    } catch {
+      /* WebView 不支持容器全屏，继续走 iOS / 旋转兜底 */
+    }
+    try {
+      video?.webkitEnterFullscreen?.();
+      if (video?.webkitDisplayingFullscreen) {
+        syncFullscreenIcon(true);
+        return;
+      }
+    } catch {
+      /* iOS 私有 API 不可用 */
+    }
+    enterRotated(art);
+    syncFullscreenIcon(true);
+    return;
+  }
+
   try {
     await art.template.$player.requestFullscreen();
     syncFullscreenIcon(true);
     return;
   } catch {
-    /* 系统浏览器 / WebView 不支持，继续降级 */
-  }
-  try {
-    video?.webkitEnterFullscreen?.();
-    if (video?.webkitDisplayingFullscreen) {
-      syncFullscreenIcon(true);
-      return;
-    }
-  } catch {
-    /* iOS 私有 API 不可用 */
+    /* 桌面浏览器不支持，继续降级 */
   }
   try {
     art.fullscreenWeb = true;
@@ -156,12 +203,18 @@ export function bindControlIconSync(art: ArtplayerType): () => void {
   art.on('fullscreenWeb', full);
   art.on('resize', full);
   art.on('pip', pip);
+  const onFullscreenChange = () => {
+    if (!document.fullscreenElement) unlockLandscape();
+    full();
+  };
+  document.addEventListener('fullscreenchange', onFullscreenChange);
   window.addEventListener('resize', full);
   return () => {
     art.off('fullscreen', full);
     art.off('fullscreenWeb', full);
     art.off('resize', full);
     art.off('pip', pip);
+    document.removeEventListener('fullscreenchange', onFullscreenChange);
     window.removeEventListener('resize', full);
     exitRotated(art);
   };
