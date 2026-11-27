@@ -59,6 +59,8 @@ export function Home() {
   const dragRef = useRef<{ startX: number; dx: number } | null>(null);
   // 用定时器归位，不依赖 transitionend：系统开启「减弱动效」时过渡接近 0ms，事件会立刻到达。
   const snapTimerRef = useRef<number | null>(null);
+  const posRef = useRef(pos);
+  posRef.current = pos;
   const [playMap, setPlayMap] = useState<Record<string, PlayRef>>({});
 
   useEffect(() => {
@@ -136,12 +138,7 @@ export function Home() {
     if (count < 2) return;
     const timer = setInterval(() => {
       if (dragRef.current) return;
-      setPos((p) => {
-        const next = p + 1;
-        cancelSnap();
-        if (next === count + 1 || next === 0) scheduleSnap(next);
-        return next;
-      });
+      moveBy(1);
     }, 7000);
     return () => clearInterval(timer);
   }, [count]);
@@ -159,9 +156,47 @@ export function Home() {
     setPos(to);
     requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
   };
-  const scheduleSnap = (target: number) => {
+  // 每次移动后都校验位置：只要 pos 落在真实帧之外就归位。
+  // 不能只在「刚到克隆帧」时安排归位——连续快滑会取消那次定时器，之后 pos 会一路累加滑出画面。
+  const scheduleSnap = () => {
     cancelSnap();
-    snapTimerRef.current = window.setTimeout(() => snapTo(target === 0 ? count : 1), 950);
+    snapTimerRef.current = window.setTimeout(() => {
+      snapTimerRef.current = null;
+      if (dragRef.current) {
+        scheduleSnap();
+        return;
+      }
+      const p = posRef.current;
+      const target = ((p - 1) % count + count) % count + 1;
+      if (target !== p) snapTo(target);
+    }, 950);
+  };
+
+  // 连续快滑时先归位再走下一步：克隆帧和真实帧画面相同，归一瞬间看不出来。
+  // 分两帧提交，避免与紧随的移动合并成一次渲染而出现跳帧。
+  const moveBy = (dir: number) => {
+    const p = posRef.current;
+    if (count < 2 || dir === 0) return;
+    if (p < 1 || p > count) {
+      const target = ((p - 1) % count + count) % count + 1;
+      cancelSnap();
+      setAnimating(false);
+      setPos(target);
+      posRef.current = target;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        setAnimating(true);
+        const next = posRef.current + dir;
+        posRef.current = next;
+        setPos(next);
+        scheduleSnap();
+      }));
+      return;
+    }
+    setAnimating(true);
+    const next = p + dir;
+    posRef.current = next;
+    setPos(next);
+    scheduleSnap();
   };
 
   const play = async () => {
@@ -181,15 +216,12 @@ export function Home() {
 
   const goTo = (i: number) => {
     if (count < 2) return;
-    const base = pos === 0 ? count : pos === count + 1 ? 1 : pos;
-    let delta = i - (((base - 1) % count + count) % count);
+    const p = posRef.current;
+    const current = ((p - 1) % count + count) % count;
+    let delta = i - current;
     if (delta > count / 2) delta -= count;
     if (delta < -count / 2) delta += count;
-    const next = base + delta;
-    cancelSnap();
-    if (next === 0 || next === count + 1) scheduleSnap(next);
-    setAnimating(true);
-    setPos(next);
+    moveBy(delta);
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
@@ -209,15 +241,7 @@ export function Home() {
     dragRef.current = null;
     setDragX(0);
     setAnimating(true);
-    if (dx < -40 || dx > 40) {
-      const dir = dx < -40 ? 1 : -1;
-      setPos((p) => {
-        const next = p + dir;
-        cancelSnap();
-        if (next === 0 || next === count + 1) scheduleSnap(next);
-        return next;
-      });
-    }
+    if (dx < -40 || dx > 40) moveBy(dx < -40 ? 1 : -1);
   };
 
   return (
