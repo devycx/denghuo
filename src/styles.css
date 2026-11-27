@@ -151,14 +151,15 @@ code {
 .searchbar input::placeholder { color: var(--faint); }
 .searchbar button {
   border: 0;
-  padding: 0 20px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-weight: 600;
-  font-size: 16px;
-  transition: filter var(--t-fast) var(--ease);
+  padding: 0 18px;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 400;
+  font-size: 17px;
+  transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
 }
-.searchbar button:hover { filter: brightness(1.1); }
+.searchbar button:hover { opacity: 0.75; }
+.searchbar button:active { transform: scale(0.92); }
 .nav { display: flex; gap: var(--sp-4); margin-left: auto; flex-shrink: 0; }
 .nav a {
   display: flex;
