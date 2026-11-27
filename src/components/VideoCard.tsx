@@ -18,7 +18,7 @@ export function VideoCard({ item }: Props) {
   return (
     <article className="card" onClick={open} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && open()}>
       <div className="card-poster">
-        {item.pic ? <img src={img(item.pic)} alt={item.name} loading="lazy" /> : <div className="card-placeholder">灯</div>}
+        {item.pic ? <img src={img(item.pic)} alt={item.name} loading="lazy" /> : <div className="card-placeholder" aria-hidden="true" />}
         {item.remarks && <span className="card-badge">{item.remarks}</span>}
         {Boolean(item.altCount) && <span className="card-alt">{(item.altCount || 0) + 1} 源</span>}
         <button
@@ -36,7 +36,7 @@ export function VideoCard({ item }: Props) {
             toast(favorite ? '已取消收藏' : '已加入收藏');
           }}
         >
-          {favorite ? '★' : '☆'}
+          {favorite ? '✓' : '+'}
         </button>
       </div>
       <div className="card-meta">

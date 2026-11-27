@@ -14,7 +14,11 @@ export async function proxyImage(ctx: RouteContext): Promise<Response> {
   if (hit) return hit;
 
   try {
-    const upstream = await fetchUpstream(raw, 8000);
+    // 豆瓣图床带防盗链，伪装 Referer 后才能取到；高清大图同样适用。
+    const headers = /\.doubanio\.com$/i.test(new URL(raw).hostname)
+      ? { Referer: 'https://movie.douban.com/' }
+      : undefined;
+    const upstream = await fetchUpstream(raw, 8000, headers ? { headers } : undefined);
     if (!upstream.ok) return error('图片源响应失败', 502);
     const type = upstream.headers.get('content-type') || 'image/jpeg';
     if (!/^image\//i.test(type)) return error('不是图片资源', 415);

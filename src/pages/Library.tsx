@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { img } from '../api';
 import { VideoCard } from '../components/VideoCard';
 import { Empty } from '../components/States';
 import { navigate } from '../router';
@@ -39,10 +38,10 @@ export function Library() {
 
       <div className="line-tabs large">
         <button className={tab === 'history' ? 'on' : ''} onClick={() => setTab('history')}>
-          观看记录 · {history.length}
+          观看记录（{history.length}）
         </button>
         <button className={tab === 'favorites' ? 'on' : ''} onClick={() => setTab('favorites')}>
-          我的收藏 · {favorites.length}
+          我的收藏（{favorites.length}）
         </button>
       </div>
 
@@ -68,12 +67,6 @@ export function Library() {
             </div>
           ))}
         </div>
-      )}
-
-      {tab === 'favorites' && favorites.length > 0 && (
-        <p className="muted footer-note">
-          封面通过 <code>{'{'} /api/image?url=... {'}'}</code> 代理：{img(favorites[0].pic) ? '已启用边缘缓存' : ''}
-        </p>
       )}
     </div>
   );

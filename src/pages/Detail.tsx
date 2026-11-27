@@ -55,7 +55,7 @@ export function Detail() {
   return (
     <div className="page detail-page">
       <button className="back-link" onClick={() => window.history.back()}>
-        ← 返回
+        返回
       </button>
       <div className="detail-head">
         <div className="detail-cover">
@@ -76,7 +76,7 @@ export function Detail() {
                 className="btn primary"
                 onClick={() => navigate(`/watch?source=${detail.sourceKey}&id=${detail.vodId}&line=${lineIndex}&ep=0`)}
               >
-                ▶ 立即播放
+                立即播放
               </button>
             )}
             <button
@@ -89,7 +89,7 @@ export function Detail() {
               {favorite ? '★ 已收藏' : '☆ 收藏'}
             </button>
             <button className="btn" onClick={openSources}>
-              ⇄ 换源
+              换源
             </button>
           </div>
         </div>

@@ -47,7 +47,7 @@ export async function getConfig(env: Env): Promise<SiteConfig> {
   }
 
   return {
-    siteName: env.SITE_NAME || '灯火视频',
+    siteName: env.SITE_NAME || '灯火影视',
     version: env.VERSION || '1.0.0',
     publicMode: env.PUBLIC_MODE !== '0',
     kvEnabled: Boolean(env.CONFIG_KV),

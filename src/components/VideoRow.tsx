@@ -6,7 +6,6 @@ export function VideoRow({ row }: { row: HomeRow }) {
     <section className="row-section">
       <div className="row-heading">
         <h2>{row.sourceName}</h2>
-        <span className="muted">最新收录</span>
       </div>
       <div className="card-row">
         {row.items.map((item) => (

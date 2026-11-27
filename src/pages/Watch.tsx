@@ -75,7 +75,7 @@ export function Watch() {
     <div className="page watch-page">
       <div className="watch-top">
         <button className="back-link" onClick={() => navigate(`/detail?source=${source}&id=${id}`)}>
-          ← 详情
+          详情
         </button>
         <h1>
           {detail.title} <span className="muted">{episode?.name}</span>
@@ -99,13 +99,13 @@ export function Watch() {
 
           <div className="watch-controls">
             <button className="btn" disabled={epIndex === 0} onClick={() => goto(epIndex - 1)}>
-              ← 上一集
+              上一集
             </button>
             <span className="muted">
               {epIndex + 1} / {total}
             </span>
             <button className="btn" disabled={epIndex + 1 >= total} onClick={() => goto(epIndex + 1)}>
-              下一集 →
+              下一集
             </button>
             <button className="btn ghost" onClick={() => navigate(`/detail?source=${source}&id=${id}`)}>
               换源 / 选集

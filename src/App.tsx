@@ -43,8 +43,7 @@ export function App() {
       <Header />
       <main>{page}</main>
       <footer className="site-footer">
-        <span>{config?.siteName || '灯火视频'}</span>
-        <span>MIT · 原创实现 · 基于 Cloudflare 免费资源</span>
+        <span>© {config?.siteName || '灯火影视'}</span>
       </footer>
       <ToastHost />
     </div>

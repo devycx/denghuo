@@ -98,7 +98,6 @@ export function Live() {
               <Player url={activeUrl} title={selected?.name} poster={selected?.logo} live />
             ) : (
               <div className="live-placeholder">
-                <span>◉</span>
                 <p>{probing ? '正在探测可用线路……' : '点一个频道开始播放'}</p>
               </div>
             )}
@@ -113,7 +112,7 @@ export function Live() {
                 </p>
               </div>
               <button className="btn" onClick={switchLine} disabled={selected.urls.length < 2}>
-                ⇄ 换线路
+                换线路
               </button>
             </div>
           )}

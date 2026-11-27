@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { navigate, useRoute } from '../router';
 import { useStore } from '../store';
 
-const LINKS: { path: string; label: string; icon: string }[] = [
-  { path: '/', label: '首页', icon: '⌂' },
-  { path: '/live', label: '直播', icon: '▣' },
-  { path: '/library', label: '我的', icon: '☆' },
-  { path: '/settings', label: '设置', icon: '⚙' },
+const LINKS: { path: string; label: string }[] = [
+  { path: '/', label: '首页' },
+  { path: '/live', label: '直播' },
+  { path: '/library', label: '我的' },
+  { path: '/settings', label: '设置' },
 ];
 
 export function Header() {
@@ -30,8 +30,7 @@ export function Header() {
     <header className="topbar">
       <div className="topbar-inner">
         <a className="brand" href="#/" aria-label="返回首页">
-          <span className="brand-mark">火</span>
-          <span className="brand-name">{config?.siteName || '灯火视频'}</span>
+          <span className="brand-name">{config?.siteName || '灯火影视'}</span>
         </a>
 
         <form className="searchbar" onSubmit={submit} role="search">
@@ -52,11 +51,8 @@ export function Header() {
               key={link.path}
               href={`#${link.path}`}
               className={isActive(link.path) ? 'active' : ''}
-              title={link.label}
+              aria-current={isActive(link.path) ? 'page' : undefined}
             >
-              <span className="nav-icon" aria-hidden="true">
-                {link.icon}
-              </span>
               <span className="nav-label">{link.label}</span>
             </a>
           ))}

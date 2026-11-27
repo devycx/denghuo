@@ -1,4 +1,4 @@
-import type { HomeRow, LiveChannel, SearchItem, SiteConfig, VideoDetail } from './types';
+import type { DoubanHotItem, HomeRow, LiveChannel, SearchItem, SiteConfig, VideoDetail } from './types';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -20,6 +20,8 @@ function post<T>(path: string, body: unknown): Promise<T> {
 export const api = {
   config: () => request<SiteConfig>('/api/config'),
   home: () => request<{ rows: HomeRow[] }>('/api/home'),
+  douban: (type: 'tv' | 'movie', limit = 24) =>
+    request<{ items: DoubanHotItem[] }>(`/api/douban?type=${type}&tag=%E7%83%AD%E9%97%A8&limit=${limit}`),
   search: (wd: string, sources?: string[], filterAdult = true) =>
     post<{ list: SearchItem[]; sourceCount: number }>('/api/search', { wd, sources, filterAdult }),
   detail: (source: string, id: string) =>

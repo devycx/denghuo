@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { wrap } from './adapter';
 import type { Env } from './types';
 import { getHealth, getHome, getSiteConfig } from './routes/config';
+import { getDoubanHot } from './routes/douban';
 import { multiDetail, search } from './routes/search';
 import { getDetail } from './routes/detail';
 import { getChannels, probe } from './routes/live';
@@ -24,6 +25,7 @@ app.use(
 app.get('/api/health', wrap(getHealth));
 app.get('/api/config', wrap(getSiteConfig));
 app.get('/api/home', wrap(getHome));
+app.get('/api/douban', wrap(getDoubanHot));
 app.post('/api/search', wrap(search));
 app.post('/api/detail/multi', wrap(multiDetail));
 app.get('/api/detail', wrap(getDetail));

@@ -26,6 +26,14 @@ export interface SearchItem {
   altCount?: number;
 }
 
+export interface DoubanHotItem {
+  id: string;
+  title: string;
+  cover: string;
+  rating?: string;
+  url?: string;
+}
+
 export interface Episode {
   name: string;
   url: string;
