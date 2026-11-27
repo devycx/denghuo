@@ -602,30 +602,29 @@ code {
 /* ---------- 播放器控件：触屏留安全区，窄屏收敛次要按钮 ---------- */
 /* 设置项无实际内容，直接从控制条移除（ArtPlayer 的 setting:false 仍可能渲染按钮）。 */
 .art-control-setting { display: none !important; }
-@media (pointer: coarse) {
-  .art-video-player.art-fullscreen,
-  .art-video-player.art-fullscreen-web,
-  .art-video-player.dh-rotated-fullscreen {
-    --art-padding: 48px;
-    --art-control-height: 60px;
-  }
-  .art-video-player.art-fullscreen .art-bottom,
-  .art-video-player.art-fullscreen-web .art-bottom,
-  .art-video-player.dh-rotated-fullscreen .art-bottom {
-    padding-left: max(48px, env(safe-area-inset-left));
-    padding-right: max(48px, env(safe-area-inset-right));
-    padding-bottom: calc(40px + env(safe-area-inset-bottom));
-  }
-  /* ArtPlayer 运行时会给两侧控件注入负 margin，正好抵消上面的 padding；必须覆盖掉。 */
-  .art-video-player.art-fullscreen .art-controls-left,
-  .art-video-player.art-fullscreen .art-controls-right,
-  .art-video-player.art-fullscreen-web .art-controls-left,
-  .art-video-player.art-fullscreen-web .art-controls-right,
-  .art-video-player.dh-rotated-fullscreen .art-controls-left,
-  .art-video-player.dh-rotated-fullscreen .art-controls-right {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
+/* 全屏下控件必须离边角足够远：不限制 pointer 类型，任何内核都生效。 */
+.art-video-player.art-fullscreen,
+.art-video-player.art-fullscreen-web,
+.art-video-player.dh-rotated-fullscreen {
+  --art-padding: 48px;
+  --art-control-height: 60px;
+}
+.art-video-player.art-fullscreen .art-bottom,
+.art-video-player.art-fullscreen-web .art-bottom,
+.art-video-player.dh-rotated-fullscreen .art-bottom {
+  padding-left: max(48px, env(safe-area-inset-left));
+  padding-right: max(48px, env(safe-area-inset-right));
+  padding-bottom: calc(40px + env(safe-area-inset-bottom));
+}
+/* ArtPlayer 运行时会给两侧控件注入负 margin，正好抵消上面的 padding；必须覆盖掉。 */
+.art-video-player.art-fullscreen .art-controls-left,
+.art-video-player.art-fullscreen .art-controls-right,
+.art-video-player.art-fullscreen-web .art-controls-left,
+.art-video-player.art-fullscreen-web .art-controls-right,
+.art-video-player.dh-rotated-fullscreen .art-controls-left,
+.art-video-player.dh-rotated-fullscreen .art-controls-right {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 @media (max-width: 640px) {
   .art-control-volume, .art-control-screenshot { display: none !important; }
