@@ -121,7 +121,8 @@ export function Watch() {
               url={episode.url}
               fallbackUrls={fallbacks.filter((u) => u !== episode.url)}
               poster={detail.cover}
-              title={`${detail.title} · ${episode.name}`}
+              title={detail.title}
+              subtitle={episode?.name}
               seekTo={progressRef.current}
               onProgress={persist}
               onEnded={() => settings.autoplay && epIndex + 1 < total && goto(epIndex + 1)}

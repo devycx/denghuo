@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type ArtplayerType from 'artplayer';
 import type HlsType from 'hls.js';
+import { buildMediaInfo, resolveArtwork } from '../lib/media-session';
+import { useMediaSession } from './use-media-session';
+import { useSquareArtwork } from './use-square-artwork';
 import {
   bindControlIconSync,
   fullscreenButtonHtml,
@@ -19,6 +22,8 @@ interface Props {
   fallbackUrls?: string[];
   poster?: string;
   title?: string;
+  /** 媒体卡片副标题：点播是集数，直播是分组 */
+  subtitle?: string;
   live?: boolean;
   seekTo?: number;
   onProgress?: (seconds: number, duration: number) => void;
@@ -45,6 +50,7 @@ export function Player({
   fallbackUrls,
   poster,
   title,
+  subtitle,
   live = false,
   seekTo = 0,
   onProgress,
@@ -66,6 +72,55 @@ export function Player({
   nextRef.current = onNext;
   seekRef.current = seekTo;
   fallbacksRef.current = fallbackUrls || [];
+
+  // —— 系统媒体卡片：通知栏/锁屏显示片名、集数与封面 ——
+  const artRef = useRef<ArtplayerType | null>(null);
+  const artwork = useMemo(() => resolveArtwork(poster), [poster]);
+  const squareArtwork = useSquareArtwork(artwork);
+  const mediaInfo = useMemo(
+    () => buildMediaInfo({ title: title || '', subtitle, artwork: squareArtwork }),
+    [title, subtitle, squareArtwork]
+  );
+
+  const clampSeek = (seconds: number) => {
+    const art = artRef.current;
+    if (!art || !Number.isFinite(seconds)) return;
+    try {
+      const duration = Number(art.duration);
+      const target =
+        Number.isFinite(duration) && duration > 0
+          ? Math.min(Math.max(seconds, 0), duration)
+          : Math.max(seconds, 0);
+      art.currentTime = target;
+    } catch {
+      /* 播放器还未就绪 */
+    }
+  };
+
+  const mediaSession = useMediaSession({
+    info: mediaInfo,
+    canSeek: !live,
+    canPrev: Boolean(onPrev),
+    canNext: Boolean(onNext),
+    actions: {
+      // ArtPlayer 的 play() 返回 Promise：锁屏点播放被浏览器拒绝时不能冒泡成未处理拒绝。
+      play: () => Promise.resolve(artRef.current?.play()).catch(() => {}),
+      pause: () => {
+        try {
+          artRef.current?.pause();
+        } catch {
+          /* 忽略 */
+        }
+      },
+      seekTo: clampSeek,
+      seekBy: (delta) => {
+        const current = Number(artRef.current?.currentTime);
+        clampSeek((Number.isFinite(current) ? current : 0) + delta);
+      },
+      prev: () => prevRef.current?.(),
+      next: () => nextRef.current?.(),
+    },
+  });
 
   const [attemptState, setAttemptState] = useState({ url, attempt: 0 });
   const [failed, setFailed] = useState(false);
@@ -162,6 +217,21 @@ export function Player({
         controls,
       });
       player = art;
+      artRef.current = art;
+
+      const syncPosition = () => {
+        if (live) return; // 直播 duration 是 Infinity，别写进度
+        const rate = typeof art.video?.playbackRate === 'number' ? art.video.playbackRate : 1;
+        mediaSession.updatePosition(art.currentTime, art.duration, rate);
+      };
+      const onPlaying = () => {
+        mediaSession.setPlaybackState('playing');
+        syncPosition();
+      };
+      const onPause = () => {
+        mediaSession.setPlaybackState('paused');
+        syncPosition();
+      };
 
       const unbindSync = bindControlIconSync(art);
       syncFullscreenIcon(false);
@@ -189,10 +259,21 @@ export function Player({
       art.on('pause', () => {
         if (art && !live) progressRef.current?.(art.currentTime, art.duration);
       });
+      art.on('video:playing', onPlaying);
+      art.on('video:pause', onPause);
+      art.on('video:seeked', syncPosition);
+      art.on('video:timeupdate', syncPosition);
+      art.on('video:ratechange', syncPosition);
 
       cleanup = () => {
         window.clearTimeout(timer);
         unbindSync();
+        art.off('video:playing', onPlaying);
+        art.off('video:pause', onPause);
+        art.off('video:seeked', syncPosition);
+        art.off('video:timeupdate', syncPosition);
+        art.off('video:ratechange', syncPosition);
+        if (artRef.current === art) artRef.current = null;
       };
       if (disposed) cleanup();
     })();
@@ -207,7 +288,7 @@ export function Player({
         /* 播放器已销毁 */
       }
     };
-  }, [url, attempt, poster, title, live]);
+  }, [url, attempt, poster, title, live, mediaSession]);
 
   const retry = () => {
     setFailed(false);

@@ -95,7 +95,13 @@ export function Live() {
         <div className="live-player-side">
           <div className="live-stage">
             {activeUrl ? (
-              <Player url={activeUrl} title={selected?.name} poster={selected?.logo} live />
+              <Player
+                url={activeUrl}
+                title={selected?.name}
+                subtitle={selected?.group || '直播'}
+                poster={selected?.logo}
+                live
+              />
             ) : (
               <div className="live-placeholder">
                 <p>{probing ? '正在探测可用线路……' : '点一个频道开始播放'}</p>
