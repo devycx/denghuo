@@ -16,7 +16,7 @@ enabled = true
 crons = ["*/30 * * * *"]
 
 [[routes]]
-pattern = "denghuo.ycxdev.com"
+pattern = "dh.ycxdev.com"
 custom_domain = true
 
 [[kv_namespaces]]
