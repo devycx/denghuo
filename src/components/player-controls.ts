@@ -8,8 +8,10 @@ import type ArtplayerType from 'artplayer';
  * - 小窗按钮与上一集/下一集按钮作为自定义控件注册进 ArtPlayer 控制条。
  */
 
-const fullscreenEnter = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 1024 1024" style="fill:currentColor;overflow:visible"><path d="M625 256h142v142h114V142H625v114zM256 398V256h142V142H142v256h114zM768 626v142H626v114h256V626H768zM398 768H256V626H142v256h256V768z"/></svg>`;
-const fullscreenExit = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 1024 1024" style="fill:currentColor;overflow:visible;display:none"><path d="M768 299h171v85H683V128h85v171zM341 384H128v-85h171V128h85v256zM768 725v-85H683v256h85V725zM341 640H128v85h171v171h85V640z"/></svg>`;
+// 用 ArtPlayer 原版完整路径：此前用整数简化版，右下角那段坐标画错，
+// 全屏后「退出全屏」图标真的少一角（用户截图确认），不是安全区/圆角裁切问题。
+const fullscreenEnter = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 1024 1024" style="fill:currentColor;overflow:visible"><path d="M625.777778 256h142.222222V398.222222h113.777778V142.222222H625.777778v113.777778zM256 398.222222V256H398.222222v-113.777778H142.222222V398.222222h113.777778zM768 625.777778v142.222222H625.777778v113.777778h256V625.777778h-113.777778zM398.222222 768H256V625.777778h-113.777778v256H398.222222v-113.777778z"/></svg>`;
+const fullscreenExit = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 1024 1024" style="fill:currentColor;overflow:visible;display:none"><path d="M768 298.666667h170.666667v85.333333h-256V128h85.333333v170.666667zM341.333333 384H85.333333V298.666667h170.666667V128h85.333333v256z m426.666667 341.333333v170.666667h-85.333333v-256h256v85.333333h-170.666667zM341.333333 640v256H256v-170.666667H85.333333v-85.333333h256z"/></svg>`;
 
 export const fullscreenButtonHtml = fullscreenEnter + fullscreenExit;
 
